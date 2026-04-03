@@ -20,7 +20,7 @@
     {% for r in records %}
     <tr>
       <td>{{ r.date }}</td>
-      <td>{{ r.person }}</td>
+      <td>{{ person_display(r.person) }}</td>
       <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
       <td class="text-end">
         <a href="{{ url_for('payments.hsa_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>

@@ -3,6 +3,7 @@
 import os
 import sys
 import getpass
+from sqlalchemy import text
 
 # Ensure the app directory is on the path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -48,9 +49,32 @@ def cmd_create_user():
         db.session.commit()
 
 
+def cmd_migrate_db():
+    """Add new columns to existing databases (safe to run multiple times)."""
+    app = get_app()
+    with app.app_context():
+        from app import db
+        with db.engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(user)"))
+            existing_cols = {row[1] for row in result}
+            added = []
+            if "person1_name" not in existing_cols:
+                conn.execute(text("ALTER TABLE user ADD COLUMN person1_name TEXT"))
+                added.append("person1_name")
+            if "person2_name" not in existing_cols:
+                conn.execute(text("ALTER TABLE user ADD COLUMN person2_name TEXT"))
+                added.append("person2_name")
+            conn.commit()
+        if added:
+            print(f"Added columns: {', '.join(added)}")
+        else:
+            print("No changes needed — database already up to date.")
+
+
 COMMANDS = {
     "init-db": cmd_init_db,
     "create-user": cmd_create_user,
+    "migrate-db": cmd_migrate_db,
 }
 
 if __name__ == "__main__":

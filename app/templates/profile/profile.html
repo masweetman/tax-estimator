@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Profile — Tax Estimator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <h1 class="h3 mb-4"><i class="bi bi-person-gear me-2"></i>Profile</h1>
+
+    <!-- Change Password -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-key me-2"></i>Change Password
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('profile.change_password') }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Current Password</label>
+            <input type="password" name="current_password" class="form-control" required
+                   autocomplete="current-password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">New Password</label>
+            <input type="password" name="new_password" class="form-control" required
+                   autocomplete="new-password" minlength="8">
+            <div class="form-text">At least 8 characters.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" name="confirm_password" class="form-control" required
+                   autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Family Members -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-people me-2"></i>Family Members
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Give Person 1 and Person 2 friendly names. These appear as labels throughout
+          the app — the underlying data values are unchanged.
+        </p>
+        <form method="post" action="{{ url_for('profile.update_family_members') }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Person 1 Name</label>
+            <input type="text" name="person1_name" class="form-control"
+                   placeholder="Person 1"
+                   value="{{ current_user.person1_name or '' }}"
+                   maxlength="64">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Person 2 Name</label>
+            <input type="text" name="person2_name" class="form-control"
+                   placeholder="Person 2"
+                   value="{{ current_user.person2_name or '' }}"
+                   maxlength="64">
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Save Names
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

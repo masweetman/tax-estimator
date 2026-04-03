@@ -20,7 +20,7 @@
     {% for r in records %}
     <tr>
       <td>{{ r.date }}</td>
-      <td>{{ r.person }}</td>
+      <td>{{ person_display(r.person) }}</td>
       <td>{{ r.account_type|replace('_',' ')|upper }}</td>
       <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
       <td class="text-end">

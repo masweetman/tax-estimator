@@ -25,7 +25,7 @@
     <tbody>
       {% for emp in employers %}
       <tr>
-        <td>{{ emp.person }}</td>
+        <td>{{ person_display(emp.person) }}</td>
         <td>
           <a href="{{ url_for('w2.paystub_list', employer_id=emp.id) }}" class="text-decoration-none fw-semibold">
             {{ emp.name }}

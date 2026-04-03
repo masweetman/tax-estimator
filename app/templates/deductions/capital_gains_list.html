@@ -21,7 +21,7 @@
     {% for r in records %}
     <tr>
       <td>{{ r.sale_date }}</td>
-      <td>{{ r.person }}</td>
+      <td>{{ person_display(r.person) }}</td>
       <td>{{ r.description }}</td>
       <td>{{ 'Long' if r.is_long_term else 'Short' }}</td>
       <td class="text-end">${{ "%.2f"|format(r.proceeds) }}</td>

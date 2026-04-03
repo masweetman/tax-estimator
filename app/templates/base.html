@@ -22,6 +22,22 @@
     {% endif %}
   {% endwith %}
 
+  {% if current_user.is_authenticated %}
+  <nav class="navbar navbar-expand-sm bg-dark navbar-dark border-bottom px-3 py-2">
+    <a class="navbar-brand fw-semibold" href="{{ url_for('dashboard.index') }}">
+      <i class="bi bi-calculator me-1"></i>Tax Estimator
+    </a>
+    <div class="ms-auto d-flex gap-2 align-items-center">
+      <a href="{{ url_for('profile.profile') }}" class="btn btn-sm btn-outline-light">
+        <i class="bi bi-person-gear me-1"></i>Profile
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-box-arrow-right me-1"></i>Logout
+      </a>
+    </div>
+  </nav>
+  {% endif %}
+
   <div class="d-flex" style="min-height:100vh">
     {% block sidebar %}{% endblock %}
 

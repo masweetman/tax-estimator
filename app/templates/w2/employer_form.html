@@ -17,8 +17,8 @@
           <div class="mb-3">
             <label class="form-label">Person</label>
             <select name="person" class="form-select" required>
-              <option value="Person 1" {{ 'selected' if editing and employer.person == 'Person 1' }}>Person 1</option>
-              <option value="Person 2" {{ 'selected' if editing and employer.person == 'Person 2' }}>Person 2</option>
+              <option value="Person 1" {{ 'selected' if editing and employer.person == 'Person 1' }}>{{ person1_name }}</option>
+              <option value="Person 2" {{ 'selected' if editing and employer.person == 'Person 2' }}>{{ person2_name }}</option>
             </select>
           </div>
 

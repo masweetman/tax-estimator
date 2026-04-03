@@ -14,6 +14,16 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    person1_name = db.Column(db.String(64), nullable=True)
+    person2_name = db.Column(db.String(64), nullable=True)
+
+    @property
+    def display_person1(self):
+        return self.person1_name or "Person 1"
+
+    @property
+    def display_person2(self):
+        return self.person2_name or "Person 2"
 
 
 @login_manager.user_loader

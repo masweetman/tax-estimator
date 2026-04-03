@@ -28,6 +28,7 @@ dist/
 build/
 *.egg-info/
 .eggs/
+info/
 
 # IDEs
 .vscode/

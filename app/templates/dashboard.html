@@ -22,6 +22,9 @@
     {% elif tax_year %}
     <span class="text-muted small">year {{ tax_year.year }}</span>
     {% endif %}
+    <a href="{{ url_for('tax_years.new') }}" class="btn btn-sm btn-outline-secondary" title="Add tax year">
+      <i class="bi bi-plus-lg"></i>
+    </a>
   </div>
 </div>
 

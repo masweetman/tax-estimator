@@ -20,7 +20,7 @@
     {% for r in records %}
     <tr>
       <td>{{ r.date }}</td>
-      <td>{{ r.person }}</td>
+      <td>{{ person_display(r.person) }}</td>
       <td>{{ r.insurance_type|title }}</td>
       <td>{{ 'Yes' if r.is_self_employed else 'No' }}</td>
       <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
