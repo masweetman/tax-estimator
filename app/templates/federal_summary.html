@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Federal Tax Summary – {{ tax_year.year }}{% endblock %}
+
+{% macro money(val) %}${{ "{:,.0f}".format(val|float) }}{% endmacro %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Federal Tax Summary &mdash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# Compute summary values                                              #}
+{# ------------------------------------------------------------------ #}
+
+{# TOTAL INCOME lines #}
+{% set wages            = inputs.w2_wages %}
+{% set interest         = inputs.interest_income %}
+{% set dividends        = inputs.ordinary_dividends %}
+{% set state_refund     = inputs.taxable_state_refund %}
+{% set business_income  = inputs.se_net_income_p1 + inputs.se_net_income_p2 %}
+{% set cap_gains        = inputs.long_term_capital_gains + inputs.short_term_capital_gains %}
+{% set total_income     = wages + interest + dividends + state_refund + business_income + cap_gains %}
+
+{# TOTAL ADJUSTMENTS lines #}
+{% set hsa_adj          = inputs.hsa_total %}
+{% set se_tax_adj       = result.se_deduction %}
+{% set sep_adj          = inputs.sep_ira_total + inputs.solo_401k_total %}
+{% set se_health_adj    = result.se_health_insurance %}
+{% set total_adj        = hsa_adj + se_tax_adj + sep_adj + se_health_adj %}
+
+{# DEDUCTIONS #}
+{% set std_itemized     = result.deduction_amount %}
+{% set qbi_ded          = result.qbi_deduction %}
+{% set total_deductions = std_itemized + qbi_ded %}
+
+{# TOTAL TAX (before credits, includes all tax types) #}
+{% set income_tax_bc    = result.federal_income_tax_before_credits %}
+{% set se_tax           = result.federal_se_tax %}
+{% set add_medicare     = result.additional_medicare_tax %}
+{% set niit             = result.niit %}
+{% set total_tax        = income_tax_bc + se_tax + add_medicare + niit %}
+
+{# TOTAL CREDITS #}
+{% set child_care_cr    = result.child_care_credit %}
+{% set ctc_cr           = result.child_tax_credit %}
+{% set total_credits    = child_care_cr + ctc_cr %}
+
+{# TOTAL PAYMENTS #}
+{% set fed_withheld     = inputs.federal_income_withheld %}
+{% set add_med_withheld = [0, inputs.medicare_withheld - inputs.w2_wages * 0.0145] | max %}
+{% set est_payments     = inputs.federal_estimated_paid %}
+{% set total_payments   = fed_withheld + add_med_withheld + est_payments %}
+
+{# BALANCE #}
+{% set net_liability    = total_tax - total_credits %}
+{% set balance          = net_liability - total_payments %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <table class="table table-sm table-bordered">
+      <colgroup>
+        <col style="width:65%">
+        <col style="width:17.5%">
+        <col style="width:17.5%">
+      </colgroup>
+      <thead class="table-dark">
+        <tr>
+          <th></th>
+          <th class="text-end">{{ tax_year.year - 1 }}</th>
+          <th class="text-end">{{ tax_year.year }}</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {# ---- TOTAL INCOME ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>TOTAL INCOME</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_income) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Wages</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(wages) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Interest Income</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(interest) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Dividend Income</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(dividends) }}</td>
+        </tr>
+        {% if state_refund %}
+        <tr>
+          <td class="ps-4">Taxable State Refunds</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(state_refund) }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td class="ps-4">Business Income (Loss)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(business_income) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Capital Gains (Losses)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(cap_gains) }}</td>
+        </tr>
+
+        {# ---- TOTAL ADJUSTMENTS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>TOTAL ADJUSTMENTS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_adj) }}</td>
+        </tr>
+        {% if hsa_adj %}
+        <tr>
+          <td class="ps-4">HSA Deduction</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(hsa_adj) }}</td>
+        </tr>
+        {% endif %}
+        {% if se_tax_adj %}
+        <tr>
+          <td class="ps-4">Self-Employment Tax Deduction</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(se_tax_adj) }}</td>
+        </tr>
+        {% endif %}
+        {% if sep_adj %}
+        <tr>
+          <td class="ps-4">Self-Employed SEP Deduction</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(sep_adj) }}</td>
+        </tr>
+        {% endif %}
+        {% if se_health_adj %}
+        <tr>
+          <td class="ps-4">Self-Employed Health Insurance</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(se_health_adj) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- AGI ---- #}
+        <tr class="table-primary fw-bold">
+          <td>ADJUSTED GROSS INCOME (AGI)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.federal_agi) }}</td>
+        </tr>
+
+        {# ---- DEDUCTIONS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>DEDUCTIONS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_deductions) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Standard or Itemized Deductions
+            <span class="text-muted small">({{ result.deduction_type }})</span>
+          </td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(std_itemized) }}</td>
+        </tr>
+        {% if qbi_ded %}
+        <tr>
+          <td class="ps-4">Qualified Business Income Deduction</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(qbi_ded) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- TAXABLE INCOME ---- #}
+        <tr class="table-primary fw-bold">
+          <td>TAXABLE INCOME</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.federal_taxable_income) }}</td>
+        </tr>
+
+        {# ---- TOTAL TAX ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>TOTAL TAX</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_tax) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Tax</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(income_tax_bc) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Alternative Minimum Tax</td>
+          <td class="text-end"></td>
+          <td class="text-end">$0</td>
+        </tr>
+        {% if se_tax %}
+        <tr>
+          <td class="ps-4">Self-Employment Tax</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(se_tax) }}</td>
+        </tr>
+        {% endif %}
+        {% if add_medicare %}
+        <tr>
+          <td class="ps-4">Additional Medicare Tax</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(add_medicare) }}</td>
+        </tr>
+        {% endif %}
+        {% if niit %}
+        <tr>
+          <td class="ps-4">Net Investment Income Tax</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(niit) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- TOTAL CREDITS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>TOTAL CREDITS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_credits) }}</td>
+        </tr>
+        {% if child_care_cr %}
+        <tr>
+          <td class="ps-4">Child Care Credit</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(child_care_cr) }}</td>
+        </tr>
+        {% endif %}
+        {% if ctc_cr %}
+        <tr>
+          <td class="ps-4">Child Tax Credit / Credit for Other Dependents</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(ctc_cr) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- TOTAL PAYMENTS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>TOTAL PAYMENTS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(total_payments) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">Income Tax Withheld</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(fed_withheld) }}</td>
+        </tr>
+        {% if add_med_withheld > 0 %}
+        <tr>
+          <td class="ps-4">Additional Medicare Tax Withheld</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(add_med_withheld) }}</td>
+        </tr>
+        {% endif %}
+        {% if est_payments %}
+        <tr>
+          <td class="ps-4">Estimated Tax Payments</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(est_payments) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- REFUND / OWED ---- #}
+        {% if balance <= 0 %}
+        <tr class="table-success fw-bold">
+          <td>TOTAL REFUND</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(-balance) }}</td>
+        </tr>
+        <tr class="fw-semibold">
+          <td class="ps-4">Refund</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(-balance) }}</td>
+        </tr>
+        {% else %}
+        <tr class="table-warning fw-bold">
+          <td>TOTAL AMOUNT OWED</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(balance) }}</td>
+        </tr>
+        <tr class="fw-semibold">
+          <td class="ps-4">Amount Owed</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(balance) }}</td>
+        </tr>
+        {% endif %}
+
+      </tbody>
+    </table>
+
+    <div class="text-muted small mt-2">
+      <i class="bi bi-info-circle me-1"></i>
+      This is a projection based on data entered in the app. Prior-year column is not yet populated.
+      Qualified dividends (${{ "{:,.0f}".format(inputs.qualified_dividends) }}) are included in
+      Dividend Income and taxed at long-term capital gains rates.
+    </div>
+  </div>
+</div>
+{% endblock %}

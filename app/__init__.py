@@ -33,6 +33,9 @@ def create_app(config_name="default"):
     from app.routes.vehicles import vehicles_bp
     from app.routes.profile import profile_bp
     from app.routes.tax_years import tax_years_bp
+    from app.routes.settings import settings_bp
+    from app.routes.llc import llc_bp
+    from app.routes.federal_summary import federal_summary_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -43,6 +46,9 @@ def create_app(config_name="default"):
     app.register_blueprint(vehicles_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(tax_years_bp)
+    app.register_blueprint(settings_bp)
+    app.register_blueprint(llc_bp)
+    app.register_blueprint(federal_summary_bp)
 
     @app.context_processor
     def inject_person_names():
@@ -61,5 +67,20 @@ def create_app(config_name="default"):
             return val
 
         return dict(person1_name=p1, person2_name=p2, person_display=person_display)
+
+    @app.context_processor
+    def inject_tax_years():
+        from flask_login import current_user
+        from flask import request as _req
+        if current_user.is_authenticated:
+            from app.models import TaxYear
+            all_years = TaxYear.query.order_by(TaxYear.year.desc()).all()
+            active_year = _req.args.get("year", type=int)
+            if active_year is None and all_years:
+                active_year = all_years[0].year
+        else:
+            all_years = []
+            active_year = None
+        return dict(nav_all_years=all_years, nav_active_year=active_year)
 
     return app

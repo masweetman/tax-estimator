@@ -63,3 +63,27 @@ def _parse_decimal(val: str):
         return float(val.strip().replace(",", ""))
     except ValueError:
         return None
+
+
+@tax_years_bp.route("/<int:year>/delete", methods=["POST"])
+@login_required
+def delete(year):
+    ty = TaxYear.query.filter_by(year=year).first_or_404()
+    db.session.delete(ty)
+    db.session.commit()
+    flash(f"Tax year {year} and all associated data deleted.", "success")
+    return redirect(url_for("dashboard.index"))
+
+
+@tax_years_bp.route("/<int:year>/update-basic", methods=["POST"])
+@login_required
+def update_basic(year):
+    """Update basic TaxYear fields (prior-year figures and state refund)."""
+    ty = TaxYear.query.filter_by(year=year).first_or_404()
+    ty.prior_year_federal_tax = _parse_decimal(request.form.get("prior_year_federal_tax", ""))
+    ty.prior_year_ca_tax = _parse_decimal(request.form.get("prior_year_ca_tax", ""))
+    ty.prior_year_agi = _parse_decimal(request.form.get("prior_year_agi", ""))
+    ty.taxable_state_refund = _parse_decimal(request.form.get("taxable_state_refund", "")) or 0
+    db.session.commit()
+    flash("Tax year figures updated.", "success")
+    return redirect(url_for("settings.settings_page", year=year))

@@ -7,25 +7,6 @@
     Tax Summary
     {% if tax_year %}<span class="text-muted fs-4">— {{ tax_year.year }}</span>{% endif %}
   </h2>
-  <div class="d-flex gap-2 align-items-center">
-    {% if all_years and all_years|length > 1 %}
-    <label class="me-1 small text-muted">Year:</label>
-    <select class="form-select form-select-sm" style="width:auto"
-            onchange="location.href='/?year='+this.value">
-      {% for ty in all_years %}
-      <option value="{{ ty.year }}"
-              {% if tax_year and ty.year == tax_year.year %}selected{% endif %}>
-        {{ ty.year }}
-      </option>
-      {% endfor %}
-    </select>
-    {% elif tax_year %}
-    <span class="text-muted small">year {{ tax_year.year }}</span>
-    {% endif %}
-    <a href="{{ url_for('tax_years.new') }}" class="btn btn-sm btn-outline-secondary" title="Add tax year">
-      <i class="bi bi-plus-lg"></i>
-    </a>
-  </div>
 </div>
 
 {% if not tax_year or not result %}
@@ -70,7 +51,9 @@
         <table class="table table-sm mb-0"><tbody>
           <tr><td>AGI</td><td class="text-end">${{ "{:,.2f}".format(result.federal_agi) }}</td></tr>
           <tr><td>Deductions ({{ result.deduction_type }})</td><td class="text-end">${{ "{:,.2f}".format(result.deduction_amount) }}</td></tr>
+          {% if result.charitable_nonitemizer_deduction %}<tr><td>Non-Itemizer Charitable Deduction</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.charitable_nonitemizer_deduction) }}</td></tr>{% endif %}
           <tr><td>Taxable Income</td><td class="text-end">${{ "{:,.2f}".format(result.federal_taxable_income) }}</td></tr>
+          {% if result.qbi_deduction %}<tr><td>QBI Deduction (20% §199A)</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.qbi_deduction) }}</td></tr>{% endif %}
           <tr class="table-secondary"><td>Income Tax (before credits)</td><td class="text-end">${{ "{:,.2f}".format(result.federal_income_tax_before_credits) }}</td></tr>
           {% if result.child_tax_credit %}<tr><td>Child Tax Credit</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.child_tax_credit) }}</td></tr>{% endif %}
           {% if result.child_care_credit %}<tr><td>Child &amp; Dep. Care Credit</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.child_care_credit) }}</td></tr>{% endif %}
@@ -95,6 +78,9 @@
           <tr><td>CA Taxable Income</td><td class="text-end">${{ "{:,.2f}".format(result.ca_taxable_income) }}</td></tr>
           <tr><td>CA Income Tax</td><td class="text-end">${{ "{:,.2f}".format(result.ca_income_tax_before_surtax) }}</td></tr>
           {% if result.ca_mental_health_surtax %}<tr><td>Mental Health Surtax (1%)</td><td class="text-end">${{ "{:,.2f}".format(result.ca_mental_health_surtax) }}</td></tr>{% endif %}
+          {% if result.ca_personal_exemption %}<tr><td>CA Personal Exemption</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.ca_personal_exemption) }}</td></tr>{% endif %}
+          {% if result.ca_dependent_credit_total %}<tr><td>CA Dependent Credit</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.ca_dependent_credit_total) }}</td></tr>{% endif %}
+          {% if result.ca_young_child_credit_total %}<tr><td>CA Young Child Credit</td><td class="text-end text-success">−${{ "{:,.2f}".format(result.ca_young_child_credit_total) }}</td></tr>{% endif %}
           <tr class="table-dark text-white"><td><strong>Total CA Tax</strong></td><td class="text-end"><strong>${{ "{:,.2f}".format(result.ca_income_tax) }}</strong></td></tr>
         </tbody></table>
       </div>
@@ -160,11 +146,18 @@
   <div class="col-6 col-md-3"><a href="{{ url_for('w2.employer_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-person-badge me-1"></i>W-2 / Paystubs</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('se.income_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-briefcase me-1"></i>Self-Employment</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('deductions.capital_gains_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-graph-up me-1"></i>Investments</a></div>
+  <div class="col-6 col-md-3"><a href="{{ url_for('deductions.interest_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-bank me-1"></i>Interest</a></div>
+  <div class="col-6 col-md-3"><a href="{{ url_for('deductions.dividend_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-pie-chart me-1"></i>Dividends</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('deductions.itemized_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-receipt me-1"></i>Deductions</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('payments.estimated_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-cash-stack me-1"></i>Est. Payments</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('payments.retirement_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-piggy-bank me-1"></i>Retirement</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('vehicles.mileage_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-car-front me-1"></i>Mileage</a></div>
   <div class="col-6 col-md-3"><a href="{{ url_for('payments.hsa_list', year=yr) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-heart-pulse me-1"></i>HSA</a></div>
+</div>
+
+<h5 class="text-uppercase text-muted small mb-2 mt-2">Reports</h5>
+<div class="row g-2 mb-4">
+  <div class="col-6 col-md-3"><a href="{{ url_for('federal_summary.summary', year=yr) }}" class="btn btn-outline-primary w-100"><i class="bi bi-file-earmark-text me-1"></i>Federal Tax Summary</a></div>
 </div>
 {% endif %}
 

@@ -87,15 +87,18 @@ class TestConstants:
 
     def test_child_tax_credit_amount(self):
         from app.calculator.constants import CHILD_TAX_CREDIT
-        assert CHILD_TAX_CREDIT == 2_000
+        assert CHILD_TAX_CREDIT[2025] == 2_000
+        assert CHILD_TAX_CREDIT[2026] == 2_200
 
     def test_irs_mileage_rate(self):
         from app.calculator.constants import IRS_MILEAGE_RATE
-        assert IRS_MILEAGE_RATE == 0.70
+        assert IRS_MILEAGE_RATE[2025] == 0.70
+        assert IRS_MILEAGE_RATE[2026] == 0.725
 
     def test_salt_cap(self):
         from app.calculator.constants import SALT_CAP
-        assert SALT_CAP == 10_000
+        assert SALT_CAP[2025] == 10_000
+        assert SALT_CAP[2026] == 40_400
 
     def test_ca_standard_deduction_mfj(self):
         from app.calculator.constants import CA_STANDARD_DEDUCTION_MFJ
@@ -373,3 +376,106 @@ class TestSummary:
         result = _calc(w2_wages=200_000)
         brackets_2025 = [0.10, 0.12, 0.22, 0.24, 0.32, 0.35, 0.37]
         assert result.get("marginal_federal_rate") in brackets_2025
+
+
+class TestInterestAndDividends:
+    """Tests for interest income, ordinary dividends, and qualified dividends."""
+
+    def test_interest_income_raises_agi(self):
+        base = _calc(w2_wages=100_000)
+        with_interest = _calc(w2_wages=100_000, interest_income=5_000)
+        assert with_interest["federal_agi"] == pytest.approx(
+            base["federal_agi"] + 5_000, abs=1
+        )
+
+    def test_ordinary_dividends_non_qualified_are_ordinary_income(self):
+        """Non-qualified portion raises ordinary taxable income."""
+        base = _calc(w2_wages=100_000)
+        with_divs = _calc(
+            w2_wages=100_000,
+            ordinary_dividends=10_000,
+            qualified_dividends=0,  # all non-qualified
+        )
+        assert with_divs["federal_agi"] == pytest.approx(
+            base["federal_agi"] + 10_000, abs=1
+        )
+
+    def test_qualified_dividends_taxed_at_ltcg_rate(self):
+        """Fully qualified dividends should produce lower tax than the same
+        amount as ordinary (non-qualified) dividends."""
+        ordinary_only = _calc(
+            w2_wages=100_000,
+            ordinary_dividends=20_000,
+            qualified_dividends=0,
+        )
+        fully_qualified = _calc(
+            w2_wages=100_000,
+            ordinary_dividends=20_000,
+            qualified_dividends=20_000,
+        )
+        # Both should have the same AGI (all dividends included in gross income)
+        assert ordinary_only["federal_agi"] == pytest.approx(
+            fully_qualified["federal_agi"], abs=1
+        )
+        # Qualified version should produce less or equal income tax before credits
+        assert fully_qualified["federal_income_tax_before_credits"] <= (
+            ordinary_only["federal_income_tax_before_credits"] + 1
+        )
+
+    def test_niit_includes_interest_and_dividends(self):
+        """NIIT base should include interest and dividend income."""
+        # High AGI to trigger NIIT; use 2025 NIIT threshold = $250k
+        result = _calc(
+            w2_wages=200_000,
+            interest_income=10_000,
+            ordinary_dividends=10_000,
+            qualified_dividends=5_000,
+            long_term_capital_gains=0,
+            short_term_capital_gains=0,
+            traditional_ira_total=0,
+        )
+        # AGI = 200k + 10k interest + 10k ordinary divs = 220k < 250k threshold
+        # So NIIT should be 0 in this scenario
+        assert result["niit"] == 0.0
+
+        # Now push over the threshold
+        high_income = _calc(
+            w2_wages=230_000,
+            interest_income=10_000,
+            ordinary_dividends=10_000,
+            qualified_dividends=5_000,
+            long_term_capital_gains=0,
+            short_term_capital_gains=0,
+            traditional_ira_total=0,
+        )
+        # AGI = 230k + 20k = 250k = exactly at threshold, NIIT base = 0
+        # Use 260k wages + no 401k to ensure AGI exceeds the $250k threshold:
+        over_threshold = _calc(
+            w2_wages=250_000,
+            interest_income=5_000,
+            ordinary_dividends=5_000,
+            qualified_dividends=5_000,
+            long_term_capital_gains=0,
+            short_term_capital_gains=0,
+            traditional_ira_total=0,
+            pretax_401k_total=0,  # remove so AGI stays over threshold
+        )
+        assert over_threshold["niit"] > 0
+
+    def test_taxable_state_refund_in_agi(self):
+        base = _calc(w2_wages=100_000)
+        with_refund = _calc(w2_wages=100_000, taxable_state_refund=3_000)
+        assert with_refund["federal_agi"] == pytest.approx(
+            base["federal_agi"] + 3_000, abs=1
+        )
+
+    def test_qualified_dividends_capped_at_ordinary(self):
+        """Qualified dividends > ordinary dividends are capped at ordinary amount."""
+        result = _calc(
+            w2_wages=100_000,
+            ordinary_dividends=5_000,
+            qualified_dividends=10_000,  # exceeds ordinary — should be clamped
+        )
+        # AGI should only reflect 5k in dividends (ordinary), not 10k
+        base = _calc(w2_wages=100_000)
+        assert result["federal_agi"] == pytest.approx(base["federal_agi"] + 5_000, abs=1)

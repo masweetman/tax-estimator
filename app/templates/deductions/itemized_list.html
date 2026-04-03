@@ -27,6 +27,7 @@
         <a href="{{ url_for('deductions.itemized_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('deductions.itemized_delete', rec_id=r.id) }}" class="d-inline"
               onsubmit="return confirm('Delete this entry?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
       </td>

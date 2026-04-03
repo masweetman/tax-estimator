@@ -28,6 +28,22 @@
       <i class="bi bi-calculator me-1"></i>Tax Estimator
     </a>
     <div class="ms-auto d-flex gap-2 align-items-center">
+      {% if nav_all_years %}
+      <select class="form-select form-select-sm" style="width:auto;background-color:#343a40;color:#fff;border-color:#6c757d"
+              onchange="location.href='/?year='+this.value">
+        {% for ty in nav_all_years %}
+        <option value="{{ ty.year }}" {% if ty.year == nav_active_year %}selected{% endif %}>{{ ty.year }}</option>
+        {% endfor %}
+      </select>
+      <a href="{{ url_for('tax_years.new') }}" class="btn btn-sm btn-outline-secondary" title="Add tax year">
+        <i class="bi bi-plus-lg"></i>
+      </a>
+      {% if nav_active_year %}
+      <a href="{{ url_for('settings.settings_page', year=nav_active_year) }}" class="btn btn-sm btn-outline-secondary" title="Tax year settings">
+        <i class="bi bi-gear"></i>
+      </a>
+      {% endif %}
+      {% endif %}
       <a href="{{ url_for('profile.profile') }}" class="btn btn-sm btn-outline-light">
         <i class="bi bi-person-gear me-1"></i>Profile
       </a>

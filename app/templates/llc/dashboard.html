@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}{{ llc.name }} – Dashboard – {{ tax_year.year }} – Tax Estimator{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0"><i class="bi bi-building me-2"></i>{{ llc.name }}</h1>
+    <small class="text-muted">{{ person_display(llc.person) }} &mdash; {{ tax_year.year }} &mdash; Disregarded Entity (Schedule C)</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('llc.home_office', llc_id=llc.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-house me-1"></i>{% if home_office %}Edit{% else %}Add{% endif %} Home Office
+    </a>
+    <a href="{{ url_for('llc.llc_edit', llc_id=llc.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>Edit LLC
+    </a>
+    <a href="{{ url_for('llc.llc_list', year=tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+{# ─── Quarterly P&L Grid ─── #}
+<h5 class="text-uppercase text-muted small mb-2">Quarterly P&amp;L</h5>
+<div class="card shadow-sm mb-4">
+  <div class="card-body p-0">
+    <form method="post" action="{{ url_for('llc.pl_grid_save', llc_id=llc.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" id="pl-grid">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:22%">P&amp;L Item</th>
+              <th class="text-end">Q1</th>
+              <th class="text-end">Q2</th>
+              <th class="text-end">Q3</th>
+              <th class="text-end">Q4</th>
+              <th class="text-end table-secondary">Annual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for field, label in pl_rows %}
+            {% set is_deduction = field in ('cogs', 'expenses') %}
+            <tr>
+              <td class="fw-semibold">{{ label }}</td>
+              {% set row_total = namespace(v=0) %}
+              {% for q in range(1, 5) %}
+              {% set val = pl_by_quarter[q][field] if q in pl_by_quarter and pl_by_quarter[q][field] is not none else '' %}
+              {% if val != '' %}{% set row_total.v = row_total.v + val|float %}{% endif %}
+              <td class="p-1">
+                <input type="number" step="0.01" min="0"
+                       name="{{ field }}_{{ q }}"
+                       value="{{ '%.2f'|format(val|float) if val != '' else '' }}"
+                       class="form-control form-control-sm text-end pl-input"
+                       data-field="{{ field }}" data-quarter="{{ q }}"
+                       style="min-width:100px"
+                       placeholder="0.00">
+              </td>
+              {% endfor %}
+              <td class="text-end table-secondary fw-semibold {{ 'text-danger' if is_deduction else 'text-success' }}" id="row-total-{{ field }}">
+                ${{ "{:,.2f}".format(pl_totals.get(field, 0)) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td class="fw-bold">Net (Grid)</td>
+              {% for q in range(1, 5) %}
+              <td class="text-end fw-semibold" id="col-net-{{ q }}">—</td>
+              {% endfor %}
+              <td class="text-end fw-bold" id="grid-net-total">
+                ${{ "{:,.2f}".format(grid_total_income - grid_total_deductions) }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="p-2 border-top">
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i class="bi bi-floppy me-1"></i>Save P&amp;L
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var inputs = document.querySelectorAll('.pl-input');
+  function fmt(n) { return '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function recalc() {
+    var fields = ['income','cogs','expenses','other_income'];
+    var qtotals = {1:0,2:0,3:0,4:0};
+    fields.forEach(function(f) {
+      var rowSum = 0;
+      for (var q = 1; q <= 4; q++) {
+        var el = document.querySelector('[name="'+f+'_'+q+'"]');
+        var v = el && el.value ? parseFloat(el.value) : 0;
+        rowSum += v;
+        if (f === 'income' || f === 'other_income') qtotals[q] += v;
+        else qtotals[q] -= v;
+      }
+      var rt = document.getElementById('row-total-'+f);
+      if (rt) rt.textContent = fmt(rowSum);
+    });
+    var grandNet = 0;
+    for (var q = 1; q <= 4; q++) {
+      grandNet += qtotals[q];
+      var cel = document.getElementById('col-net-'+q);
+      if (cel) cel.textContent = fmt(qtotals[q]);
+    }
+    var gnt = document.getElementById('grid-net-total');
+    if (gnt) gnt.textContent = fmt(grandNet);
+  }
+  inputs.forEach(function(el) { el.addEventListener('input', recalc); });
+  recalc();
+})();
+</script>
+
+{# ─── Summary cards ─── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-light h-100"><div class="card-body py-3">
+      <div class="text-muted small">Direct Expenses</div>
+      <div class="fs-5 fw-semibold text-danger">${{ "{:,.2f}".format(total_expenses) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-light h-100"><div class="card-body py-3">
+      <div class="text-muted small">Mileage Deduction</div>
+      <div class="fs-5 fw-semibold text-danger">${{ "{:,.2f}".format(mileage_deduction) }}</div>
+      <div class="small text-muted">{{ "%.1f"|format(total_miles) }} mi @ ${{ "%.3f"|format(mileage_rate) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card {{ 'text-bg-success text-white' if net_profit >= 0 else 'text-bg-danger text-white' }} h-100"><div class="card-body py-3">
+      <div class="small">Net Profit / Loss</div>
+      <div class="fs-5 fw-semibold">${{ "{:,.2f}".format(net_profit) }}</div>
+    </div></div>
+  </div>
+</div>
+
+{# ─── Revenue ─── #}
+<h5 class="text-uppercase text-muted small mb-2">Revenue</h5>
+{% if income_records %}
+<table class="table table-sm table-striped mb-4">
+  <thead class="table-dark">
+    <tr><th>Date</th><th>Client</th><th>Category</th><th class="text-end">Amount</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in income_records %}
+    <tr>
+      <td>{{ r.date }}</td>
+      <td>{{ r.client or '—' }}</td>
+      <td>{{ r.category|replace('_',' ')|title }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td><a href="{{ url_for('se.income_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0">Edit</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">${{ "%.2f"|format(total_income) }}</td><td></td></tr></tfoot>
+</table>
+{% else %}
+<p class="text-muted mb-4">No income associated with this LLC.
+  <a href="{{ url_for('se.income_add', year=tax_year.year) }}">Add SE income</a> and select this LLC.
+</p>
+{% endif %}
+
+{# ─── Expenses ─── #}
+<h5 class="text-uppercase text-muted small mb-2">Direct Expenses</h5>
+{% if expense_records %}
+<table class="table table-sm table-striped mb-4">
+  <thead class="table-dark">
+    <tr><th>Date</th><th>Description</th><th>Category</th><th class="text-end">Amount</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in expense_records %}
+    <tr>
+      <td>{{ r.date }}</td>
+      <td>{{ r.description }}</td>
+      <td>{{ r.category|replace('_',' ')|title }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td><a href="{{ url_for('se.expense_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0">Edit</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">${{ "%.2f"|format(total_expenses) }}</td><td></td></tr></tfoot>
+</table>
+{% else %}
+<p class="text-muted mb-4">No expenses associated with this LLC.
+  <a href="{{ url_for('se.expense_add', year=tax_year.year) }}">Add SE expense</a> and select this LLC.
+</p>
+{% endif %}
+
+{# ─── Mileage ─── #}
+<h5 class="text-uppercase text-muted small mb-2">Vehicle Mileage</h5>
+{% if mileage_records %}
+<table class="table table-sm table-striped mb-4">
+  <thead class="table-dark">
+    <tr><th>Date</th><th>Vehicle</th><th>Purpose</th><th class="text-end">Miles</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in mileage_records %}
+    <tr>
+      <td>{{ r.date }}</td>
+      <td>{{ r.vehicle_name }}</td>
+      <td>{{ r.purpose or '—' }}</td>
+      <td class="text-end">{{ "%.1f"|format(r.business_miles) }}</td>
+      <td><a href="{{ url_for('vehicles.mileage_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0">Edit</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr class="fw-bold">
+    <td colspan="3">Deduction @ ${{ "%.3f"|format(mileage_rate) }}/mi</td>
+    <td class="text-end">${{ "%.2f"|format(mileage_deduction) }}</td><td></td>
+  </tr></tfoot>
+</table>
+{% else %}
+<p class="text-muted mb-4">No mileage associated with this LLC.
+  <a href="{{ url_for('vehicles.mileage_add', year=tax_year.year) }}">Add mileage</a> and select this LLC.
+</p>
+{% endif %}
+
+{# ─── Home Office ─── #}
+<h5 class="text-uppercase text-muted small mb-2">Home Office Deduction</h5>
+{% if home_office %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>
+      {{ home_office.business_sqft }} sqft business / {{ home_office.home_sqft }} sqft total
+      &mdash; <strong>{{ "%.1f"|format(home_office.business_pct * 100) }}% business use</strong>
+    </span>
+    <a href="{{ url_for('llc.home_office', llc_id=llc.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Deduction</th>
+          <th class="text-end">Total Entered</th>
+          <th class="text-end text-danger">Business (Schedule C)</th>
+          <th class="text-end text-info">Personal (Schedule A)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in ho_lines %}
+        <tr>
+          <td>{{ line.label }}</td>
+          <td class="text-end">${{ "%.2f"|format(line.total) }}</td>
+          <td class="text-end text-danger">${{ "%.2f"|format(line.business) }}</td>
+          <td class="text-end text-info">{% if line.personal > 0 %} ${{ "%.2f"|format(line.personal) }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr class="fw-bold">
+        <td colspan="2">Total Business Deduction</td>
+        <td class="text-end text-danger">${{ "%.2f"|format(ho_business_total) }}</td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+</div>
+{% else %}
+<p class="text-muted mb-4">
+  No home office configured.
+  <a href="{{ url_for('llc.home_office', llc_id=llc.id) }}">Set up home office deduction.</a>
+</p>
+{% endif %}
+
+{# ─── P&L Summary ─── #}
+<div class="card border-dark mb-4" style="max-width:420px">
+  <div class="card-header fw-bold">Schedule C Net Profit / Loss</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <tbody>
+        <tr><td>Revenue</td><td class="text-end">${{ "{:,.2f}".format(total_income) }}</td></tr>
+        <tr><td>Direct Expenses</td><td class="text-end text-danger">−${{ "{:,.2f}".format(total_expenses) }}</td></tr>
+        <tr><td>Mileage Deduction</td><td class="text-end text-danger">−${{ "{:,.2f}".format(mileage_deduction) }}</td></tr>
+        {% if ho_business_total > 0 %}
+        <tr><td>Home Office Deduction</td><td class="text-end text-danger">−${{ "{:,.2f}".format(ho_business_total) }}</td></tr>
+        {% endif %}
+        <tr class="table-{{ 'success' if net_profit >= 0 else 'danger' }} fw-bold">
+          <td>Net {{ 'Profit' if net_profit >= 0 else 'Loss' }}</td>
+          <td class="text-end">${{ "{:,.2f}".format(net_profit) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  <a href="{{ url_for('se.income_add', year=tax_year.year) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Add Income
+  </a>
+  <a href="{{ url_for('se.expense_add', year=tax_year.year) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Add Expense
+  </a>
+  <a href="{{ url_for('vehicles.mileage_add', year=tax_year.year) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Add Mileage
+  </a>
+</div>
+
+{% endblock %}

@@ -3,10 +3,22 @@
 {% block content %}
 <h2>{% if record %}Edit{% else %}Add{% endif %} Mileage Entry</h2>
 <form method="post" class="mt-3" style="max-width:520px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="mb-3">
     <label class="form-label">Vehicle</label>
     <input name="vehicle_name" class="form-control" required value="{{ record.vehicle_name if record else '' }}">
   </div>
+  {% if llcs %}
+  <div class="mb-3">
+    <label class="form-label">Single-Member LLC <span class="text-muted small">(optional)</span></label>
+    <select name="llc_id" class="form-select">
+      <option value="">— None —</option>
+      {% for llc in llcs %}
+      <option value="{{ llc.id }}" {{ 'selected' if record and record.llc_id == llc.id }}>{{ llc.name }} ({{ person_display(llc.person) }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
   <div class="mb-3">
     <label class="form-label">Date</label>
     <input name="date" type="date" class="form-control" required

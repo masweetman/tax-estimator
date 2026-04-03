@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Home Office – {{ llc.name }} – {{ tax_year.year }} – Tax Estimator{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2>Home Office Deduction</h2>
+    <p class="text-muted mb-0">{{ llc.name }} &mdash; {{ tax_year.year }}</p>
+  </div>
+  <a href="{{ url_for('llc.llc_dashboard', llc_id=llc.id) }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="alert alert-info">
+  <strong>How this works:</strong> Enter the <em>total</em> home expenses for the year. The business percentage
+  (business sqft ÷ total sqft) is applied automatically. Property taxes and mortgage interest: the business
+  portion reduces Schedule C income; the personal portion remains as a potential Schedule A deduction.
+  Home insurance, utilities, garbage, and HOA dues: business portion only — no personal deduction.
+  Depreciation: enter the full business deduction amount (business portion already calculated separately).
+</div>
+
+<form method="post" class="mt-3" style="max-width:580px" id="ho-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <h5>Square Footage</h5>
+  <div class="row g-3 mb-3">
+    <div class="col-6">
+      <label class="form-label">Total Home Sqft</label>
+      <input type="number" name="home_sqft" step="1" min="1" class="form-control" required
+             id="home_sqft" oninput="updatePct()"
+             value="{{ home_office.home_sqft if home_office else '' }}">
+    </div>
+    <div class="col-6">
+      <label class="form-label">Business Use Sqft</label>
+      <input type="number" name="business_sqft" step="1" min="1" class="form-control" required
+             id="business_sqft" oninput="updatePct()"
+             value="{{ home_office.business_sqft if home_office else '' }}">
+    </div>
+  </div>
+  <div class="alert alert-secondary py-2 mb-4" id="pct-display">
+    Business use: <strong id="pct-val">
+      {% if home_office %}{{ "%.2f"|format(home_office.business_pct * 100) }}%{% else %}—{% endif %}
+    </strong>
+  </div>
+
+  <h5>Home Expenses <small class="text-muted fw-normal">(enter full-year totals)</small></h5>
+  <div class="row g-3 mb-3">
+    {% set ho = home_office %}
+    <div class="col-sm-6">
+      <label class="form-label">Property Taxes
+        <span class="badge bg-info text-dark">Sched A personal remainder</span></label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="property_taxes" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.property_taxes) if ho and ho.property_taxes is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">Mortgage Interest
+        <span class="badge bg-info text-dark">Sched A personal remainder</span></label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="mortgage_interest" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.mortgage_interest) if ho and ho.mortgage_interest is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">Home Insurance</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="home_insurance" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.home_insurance) if ho and ho.home_insurance is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">Utilities</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="utilities" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.utilities) if ho and ho.utilities is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">Garbage</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="garbage" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.garbage) if ho and ho.garbage is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">HOA Dues</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="hoa_dues" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.hoa_dues) if ho and ho.hoa_dues is not none else '' }}">
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <label class="form-label">Depreciation
+        <span class="badge bg-warning text-dark">Full business amount</span></label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input type="number" name="depreciation" step="0.01" min="0" class="form-control"
+               value="{{ '%.2f'|format(ho.depreciation) if ho and ho.depreciation is not none else '' }}">
+      </div>
+      <div class="form-text">Enter the business portion only (IRS Form 8829 line 42 value).</div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Notes <span class="text-muted small">(optional)</span></label>
+    <textarea name="notes" class="form-control" rows="2">{{ home_office.notes if home_office else '' }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a href="{{ url_for('llc.llc_dashboard', llc_id=llc.id) }}" class="btn btn-secondary ms-2">Cancel</a>
+</form>
+
+<script>
+function updatePct() {
+  const home = parseFloat(document.getElementById('home_sqft').value) || 0;
+  const biz  = parseFloat(document.getElementById('business_sqft').value) || 0;
+  const el   = document.getElementById('pct-val');
+  el.textContent = home > 0 ? (biz / home * 100).toFixed(2) + '%' : '—';
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,68 @@
+2026 TAX YEAR REFERENCE DATA (FEDERAL & CALIFORNIA)
+---------------------------------------------------
+Note: These values apply to income earned in 2026 (filed in early 2027).
+
+1. FEDERAL INCOME TAX BRACKETS (MFJ - FAMILY OF 4)
+Adjusted for 2026 inflation (OBBBA Permanent Rates).
+
+Rate    Married Filing Jointly (MFJ)      Single Filers
+10%     $0 – $24,800                      $0 – $12,400
+12%     $24,801 – $100,800                $12,401 – $50,400
+22%     $100,801 – $211,400               $50,401 – $105,700
+24%     $211,401 – $403,550               $105,701 – $201,775
+32%     $403,551 – $512,450               $201,776 – $256,225
+35%     $512,451 – $768,700               $256,226 – $640,600
+37%     Over $768,700                     Over $640,600
+
+2. STANDARD DEDUCTIONS (2026)
+- Married Filing Jointly: $32,200
+- Single / Married Filing Separately: $16,100
+- Head of Household: $24,150
+- OBBBA Senior Deduction (Age 65+): $12,000 (MFJ) / $6,000 (Single) 
+  *Phase-out starts at $150k (MFJ) / $75k (Single) MAGI.
+
+3. DEDUCTIONS & MILEAGE (NEW FOR 2026)
+- SALT Cap (State and Local Taxes): $40,400 (Increased from $40k)
+  *Phase-down begins at $505,000 MAGI (MFJ); floor is $10,000.
+- IRS Business Mileage Rate: 72.5 cents per mile
+- IRS Medical/Moving Mileage: 20.5 cents per mile
+- Charitable Deduction (Non-Itemizers): $2,000 (MFJ) / $1,000 (Single)
+  *Subject to a 0.5% AGI floor for all filers.
+
+4. FAMILY & EDUCATION CREDITS
+- Child Tax Credit (CTC): $2,200 per child (Partially refundable to $1,700)
+- Dependent Care Credit: Up to $6,000 for 2+ children (Max 35% of expenses)
+- 529 Contribution (Gift Tax Exclusion): $19,000 (Individual) / $38,000 (MFJ)
+- 529 Superfunding (5-Year): $95,000 (Individual) / $190,000 (MFJ)
+
+5. RETIREMENT & SAVINGS LIMITS (2026)
+- 401(k), 403(b), 457 Limit: $24,500
+- IRA Contribution Limit: $7,500 (Catch-up 50+: +$1,100)
+- HSA Limit (Family): $8,750 (Self-only: $4,400)
+- HSA Catch-up (Age 55+): $1,000
+
+6. SURCHARGES (THE "250K MAXIMUMS")
+- Net Investment Income Tax (NIIT): 3.8% on income over $250,000 (MFJ)
+- Additional Medicare Tax: 0.9% on wages over $250,000 (MFJ)
+
+7. CALIFORNIA STATE TAXES (2026 ESTIMATED)
+- CA Standard Deduction (MFJ): $11,720
+- CA SDI (Disability Insurance): 1.3% (Increased from 1.2%, No wage cap)
+- CA Dependent Credit: $488 per dependent
+- CA Personal Exemption: $157 (Single) / $314 (MFJ)
+- CA Young Child Tax Credit: $1,117 (Qualifying children under 6)
+- CA 529 Deduction (SB 529): $10,000 (MFJ) / $5,000 (Single) 
+  *NEW: Only for Scholarshare accounts; income limits apply ($150k MFJ).
+
+CA MARGINAL INCOME TAX RATES (2026):
+Rate    Married Filing Jointly (MFJ)
+1.0%    $0 – $22,756
+2.0%    $22,757 – $53,946
+4.0%    $53,947 – $85,142
+6.0%    $85,143 – $118,191
+8.0%    $118,192 – $149,375
+9.3%    $149,376 – $763,018
+10.3%   $763,019 – $915,614
+11.3%   $915,615 – $1,526,025
+12.3%   Over $1,526,025
+- Behavioral Health Surcharge: +1% on income over $1,000,000

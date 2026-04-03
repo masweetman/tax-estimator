@@ -31,7 +31,7 @@
 <table class="table table-sm table-striped">
   <thead class="table-dark">
     <tr>
-      <th>Date</th><th>Vehicle</th><th>Purpose</th>
+      <th>Date</th><th>Vehicle</th><th>Purpose</th><th>LLC</th>
       <th class="text-end">Odo Start</th><th class="text-end">Odo End</th>
       <th class="text-end">Bus. Miles</th><th></th>
     </tr>
@@ -42,6 +42,7 @@
       <td>{{ r.date }}</td>
       <td>{{ r.vehicle_name }}</td>
       <td>{{ r.purpose or '—' }}</td>
+      <td>{% if r.llc %}<a href="{{ url_for('llc.llc_dashboard', llc_id=r.llc.id) }}">{{ r.llc.name }}</a>{% else %}—{% endif %}</td>
       <td class="text-end">{{ r.odometer_start or '—' }}</td>
       <td class="text-end">{{ r.odometer_end or '—' }}</td>
       <td class="text-end">{{ "%.1f"|format(r.business_miles) }}</td>
@@ -49,6 +50,7 @@
         <a href="{{ url_for('vehicles.mileage_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('vehicles.mileage_delete', rec_id=r.id) }}" class="d-inline"
               onsubmit="return confirm('Delete this entry?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
       </td>
@@ -57,7 +59,7 @@
   </tbody>
   <tfoot>
     <tr class="fw-bold">
-      <td colspan="5">Total Business Miles</td>
+      <td colspan="6">Total Business Miles</td>
       <td class="text-end">{{ "%.1f"|format(total_miles) }}</td>
       <td></td>
     </tr>

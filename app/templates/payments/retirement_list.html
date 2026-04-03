@@ -8,11 +8,56 @@
   </a>
 </div>
 
+{% if solo_401k_calcs %}
+<h5 class="mt-2">Solo 401(k) Max Contribution Calculator</h5>
+{% for c in solo_401k_calcs %}
+<div class="card mb-3" style="max-width:540px">
+  <div class="card-header fw-semibold">{{ c.llc_name }}</div>
+  <div class="card-body py-2">
+    <table class="table table-sm mb-1">
+      <tbody>
+        <tr><td>Schedule C Net Profit</td><td class="text-end">${{ "{:,.2f}".format(c.net_profit) }}</td></tr>
+        <tr class="text-muted small">
+          <td>&nbsp;&nbsp;Net SE Earnings (× 92.35%)</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.net_se_earnings) }}</td>
+        </tr>
+        <tr class="text-muted small">
+          <td>&nbsp;&nbsp;SE Tax (× 15.3%)</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.se_tax) }}</td>
+        </tr>
+        <tr class="text-muted small">
+          <td>&nbsp;&nbsp;SE Deductible Half (÷ 2)</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.se_deductible) }}</td>
+        </tr>
+        <tr>
+          <td><strong>Net Earned Income (Plan Compensation)</strong></td>
+          <td class="text-end"><strong>${{ "{:,.2f}".format(c.net_earned_income) }}</strong></td>
+        </tr>
+        <tr>
+          <td>Max Employee Deferral (≤ ${{ "{:,}".format(c.employee_limit) }})</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.max_employee) }}</td>
+        </tr>
+        <tr>
+          <td>Max Employer Contribution (20% of C)</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.max_employer) }}</td>
+        </tr>
+        <tr class="table-success fw-bold">
+          <td>Grand Total (≤ ${{ "{:,}".format(c.total_limit) }})</td>
+          <td class="text-end">${{ "{:,.2f}".format(c.grand_total) }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="text-muted small mb-0">These calculations are for informational purposes. Verify with a tax professional.</p>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
 {% if records %}
 <table class="table table-sm table-striped">
   <thead class="table-dark">
     <tr>
-      <th>Date</th><th>Person</th><th>Account Type</th>
+      <th>Date</th><th>Person</th><th>Account Type</th><th>LLC</th>
       <th class="text-end">Amount</th><th></th>
     </tr>
   </thead>
@@ -21,12 +66,19 @@
     <tr>
       <td>{{ r.date }}</td>
       <td>{{ person_display(r.person) }}</td>
-      <td>{{ r.account_type|replace('_',' ')|upper }}</td>
+      <td>
+        {%- if r.account_type == 'solo_401k_employee' %}Solo 401(k) &mdash; Employee
+        {%- elif r.account_type == 'solo_401k_employer' %}Solo 401(k) &mdash; Employer
+        {%- else %}{{ r.account_type|replace('_',' ')|upper }}
+        {%- endif -%}
+      </td>
+      <td>{{ r.llc.name if r.llc else '—' }}</td>
       <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
       <td class="text-end">
         <a href="{{ url_for('payments.retirement_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('payments.retirement_delete', rec_id=r.id) }}" class="d-inline"
               onsubmit="return confirm('Delete this entry?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
       </td>
@@ -35,7 +87,7 @@
   </tbody>
   <tfoot>
     <tr class="fw-bold">
-      <td colspan="3">Total</td>
+      <td colspan="4">Total</td>
       <td class="text-end">${{ "%.2f"|format(total) }}</td>
       <td></td>
     </tr>

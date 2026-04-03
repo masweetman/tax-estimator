@@ -6,6 +6,7 @@ from flask_login import login_required
 from app import db
 from app.models import (
     CapitalGain, Deduction, ChildCareExpense, InsurancePremium,
+    InterestIncome, DividendIncome,
     TaxYear, DEDUCTION_CATEGORIES, INSURANCE_TYPES,
 )
 
@@ -276,4 +277,128 @@ def insurance_delete(rec_id):
     db.session.commit()
     flash("Insurance premium deleted.", "info")
     return redirect(url_for("deductions.insurance_list", year=year))
+
+
+# ---------------------------------------------------------------------------
+# Interest Income (1099-INT)
+# ---------------------------------------------------------------------------
+
+@deductions_bp.route("/<int:year>/interest")
+@login_required
+def interest_list(year):
+    ty = _get_year_or_404(year)
+    records = InterestIncome.query.filter_by(tax_year_id=ty.id).order_by(InterestIncome.payer).all()
+    total = sum(float(r.amount) for r in records)
+    return render_template("deductions/interest_list.html", tax_year=ty, records=records, total=total)
+
+
+@deductions_bp.route("/<int:year>/interest/add", methods=["GET", "POST"])
+@login_required
+def interest_add(year):
+    ty = _get_year_or_404(year)
+    if request.method == "POST":
+        rec = InterestIncome(
+            tax_year_id=ty.id,
+            payer=request.form["payer"].strip(),
+            amount=float(request.form["amount"]),
+            notes=request.form.get("notes", "").strip() or None,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        flash("Interest income added.", "success")
+        return redirect(url_for("deductions.interest_list", year=year))
+    return render_template("deductions/interest_form.html", tax_year=ty, record=None)
+
+
+@deductions_bp.route("/interest/<int:rec_id>/edit", methods=["GET", "POST"])
+@login_required
+def interest_edit(rec_id):
+    rec = db.session.get(InterestIncome, rec_id) or abort(404)
+    year = rec.tax_year.year
+    if request.method == "POST":
+        rec.payer = request.form["payer"].strip()
+        rec.amount = float(request.form["amount"])
+        rec.notes = request.form.get("notes", "").strip() or None
+        db.session.commit()
+        flash("Interest income updated.", "success")
+        return redirect(url_for("deductions.interest_list", year=year))
+    return render_template("deductions/interest_form.html", tax_year=rec.tax_year, record=rec)
+
+
+@deductions_bp.route("/interest/<int:rec_id>/delete", methods=["POST"])
+@login_required
+def interest_delete(rec_id):
+    rec = db.session.get(InterestIncome, rec_id) or abort(404)
+    year = rec.tax_year.year
+    db.session.delete(rec)
+    db.session.commit()
+    flash("Interest income deleted.", "info")
+    return redirect(url_for("deductions.interest_list", year=year))
+
+
+# ---------------------------------------------------------------------------
+# Dividend Income (1099-DIV)
+# ---------------------------------------------------------------------------
+
+@deductions_bp.route("/<int:year>/dividends")
+@login_required
+def dividend_list(year):
+    ty = _get_year_or_404(year)
+    records = DividendIncome.query.filter_by(tax_year_id=ty.id).order_by(DividendIncome.payer).all()
+    total_ordinary = sum(float(r.ordinary_dividends) for r in records)
+    total_qualified = sum(float(r.qualified_dividends) for r in records)
+    return render_template("deductions/dividend_list.html", tax_year=ty, records=records,
+                           total_ordinary=total_ordinary, total_qualified=total_qualified)
+
+
+@deductions_bp.route("/<int:year>/dividends/add", methods=["GET", "POST"])
+@login_required
+def dividend_add(year):
+    ty = _get_year_or_404(year)
+    if request.method == "POST":
+        ordinary = float(request.form["ordinary_dividends"])
+        qualified = float(request.form.get("qualified_dividends") or 0)
+        qualified = min(qualified, ordinary)
+        rec = DividendIncome(
+            tax_year_id=ty.id,
+            payer=request.form["payer"].strip(),
+            ordinary_dividends=ordinary,
+            qualified_dividends=qualified,
+            notes=request.form.get("notes", "").strip() or None,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        flash("Dividend income added.", "success")
+        return redirect(url_for("deductions.dividend_list", year=year))
+    return render_template("deductions/dividend_form.html", tax_year=ty, record=None)
+
+
+@deductions_bp.route("/dividends/<int:rec_id>/edit", methods=["GET", "POST"])
+@login_required
+def dividend_edit(rec_id):
+    rec = db.session.get(DividendIncome, rec_id) or abort(404)
+    year = rec.tax_year.year
+    if request.method == "POST":
+        ordinary = float(request.form["ordinary_dividends"])
+        qualified = float(request.form.get("qualified_dividends") or 0)
+        qualified = min(qualified, ordinary)
+        rec.payer = request.form["payer"].strip()
+        rec.ordinary_dividends = ordinary
+        rec.qualified_dividends = qualified
+        rec.notes = request.form.get("notes", "").strip() or None
+        db.session.commit()
+        flash("Dividend income updated.", "success")
+        return redirect(url_for("deductions.dividend_list", year=year))
+    return render_template("deductions/dividend_form.html", tax_year=rec.tax_year, record=rec)
+
+
+@deductions_bp.route("/dividends/<int:rec_id>/delete", methods=["POST"])
+@login_required
+def dividend_delete(rec_id):
+    rec = db.session.get(DividendIncome, rec_id) or abort(404)
+    year = rec.tax_year.year
+    db.session.delete(rec)
+    db.session.commit()
+    flash("Dividend income deleted.", "info")
+    return redirect(url_for("deductions.dividend_list", year=year))
 

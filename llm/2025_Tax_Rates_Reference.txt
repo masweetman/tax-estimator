@@ -1,0 +1,60 @@
+2025 TAX YEAR REFERENCE DATA (FEDERAL & CALIFORNIA) - UPDATED
+------------------------------------------------------------
+Note: These are the FINALIZED values for the 2025 tax year.
+
+1. FEDERAL INCOME TAX BRACKETS (MFJ)
+Rate    Married Filing Jointly (MFJ)      Single Filers
+10%     $0 – $23,850                      $0 – $11,925
+12%     $23,851 – $96,950                 $11,926 – $48,475
+22%     $96,951 – $206,700                $48,476 – $103,350
+24%     $206,701 – $394,600               $103,351 – $197,300
+32%     $394,601 – $501,050               $197,301 – $250,525
+35%     $501,051 – $751,600               $250,526 – $626,350
+37%     Over $751,600                     Over $626,350
+
+2. STANDARD DEDUCTIONS (2025 - OBBBA ADJUSTED)
+- Married Filing Jointly: $31,500
+- Single / Married Filing Separately: $15,750
+- Head of Household: $23,625
+- OBBBA Senior Deduction (Age 65+): $6,000 per qualifying spouse
+  *Available to both itemizers and non-itemizers.
+
+3. DEDUCTIONS & MILEAGE (2025)
+- SALT Cap (State and Local Taxes): $40,000 (MFJ) / $20,000 (Single)
+  *Phase-down begins at $500k MAGI (MFJ); cap reduces to $10,000 at $600k.
+- IRS Business Mileage Rate: 70.0 cents per mile
+- IRS Medical/Moving Mileage: 21.0 cents per mile
+- Charitable Deduction (Non-Itemizers): $1,200 (MFJ) / $600 (Single)
+
+4. FAMILY & EDUCATION CREDITS (2025)
+- Child Tax Credit (CTC): $2,200 per child (Refundable portion: $1,700)
+- Dependent Care Credit Max: $3,000 (1 child) / $6,000 (2+ children)
+- 529 Contribution (Gift Exclusion): $18,000 per person
+
+5. RETIREMENT & SAVINGS LIMITS (2025)
+- 401(k), 403(b), 457 Limit: $23,500
+- IRA Contribution Limit: $7,000
+- HSA Limit (Family): $8,550 (Self-only: $4,300)
+
+6. PAYROLL TAXES
+- Social Security Wage Base: $176,100 (Rate: 6.2%)
+- Medicare Tax: 1.45%
+- Additional Medicare Tax: 0.9% over $250k (MFJ) / $200k (Single)
+
+7. CALIFORNIA STATE TAXES (2025 ACTUAL)
+- CA Standard Deduction (MFJ): $11,412
+- CA SDI (Disability Insurance): 1.2% (No wage cap)
+- CA Dependent Credit: $475 per dependent
+- CA Personal Exemption: $153 (Single) / $306 (MFJ)
+
+CA MARGINAL INCOME TAX RATES (2025):
+Rate    Married Filing Jointly (MFJ)
+1.0%    $0 – $22,158
+2.0%    $22,159 – $52,528
+4.0%    $52,529 – $82,904
+6.0%    $82,905 – $115,084
+8.0%    $115,085 – $145,448
+9.3%    $145,449 – $742,958
+10.3%   $742,959 – $891,542
+11.3%   $891,543 – $1,485,906
+12.3%   Over $1,485,906

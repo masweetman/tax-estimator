@@ -44,6 +44,7 @@ class TaxYear(db.Model):
     prior_year_federal_tax = db.Column(db.Numeric(12, 2), nullable=True)
     prior_year_ca_tax = db.Column(db.Numeric(12, 2), nullable=True)
     prior_year_agi = db.Column(db.Numeric(12, 2), nullable=True)
+    taxable_state_refund = db.Column(db.Numeric(12, 2), nullable=True, default=0)
 
     # Relationships (cascade delete children when TaxYear is deleted)
     employers = db.relationship("Employer", back_populates="tax_year", cascade="all, delete-orphan")
@@ -57,6 +58,11 @@ class TaxYear(db.Model):
     retirement_contributions = db.relationship("RetirementContribution", back_populates="tax_year", cascade="all, delete-orphan")
     insurance_premiums = db.relationship("InsurancePremium", back_populates="tax_year", cascade="all, delete-orphan")
     hsa_contributions = db.relationship("HSAContribution", back_populates="tax_year", cascade="all, delete-orphan")
+    settings = db.relationship("TaxYearSettings", back_populates="tax_year", uselist=False, cascade="all, delete-orphan")
+    llcs = db.relationship("SingleMemberLLC", back_populates="tax_year", cascade="all, delete-orphan", order_by="SingleMemberLLC.person")
+    home_offices = db.relationship("HomeOffice", back_populates="tax_year", cascade="all, delete-orphan")
+    interest_income = db.relationship("InterestIncome", back_populates="tax_year", cascade="all, delete-orphan", order_by="InterestIncome.payer")
+    dividend_income = db.relationship("DividendIncome", back_populates="tax_year", cascade="all, delete-orphan", order_by="DividendIncome.payer")
 
 
 # ---------------------------------------------------------------------------
@@ -84,8 +90,8 @@ class Paystub(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     employer_id = db.Column(db.Integer, db.ForeignKey("employer.id", ondelete="CASCADE"), nullable=False)
-    pay_period_start = db.Column(db.Date, nullable=False)
-    pay_period_end = db.Column(db.Date, nullable=False)
+    pay_period_start = db.Column(db.Date, nullable=True)
+    pay_period_end = db.Column(db.Date, nullable=True)
     pay_date = db.Column(db.Date, nullable=False)
     is_actual = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -111,10 +117,56 @@ class Paystub(db.Model):
     @property
     def pretax_benefit_total(self):
         """Total pre-tax benefit deductions that reduce Box 1 (taxable) wages."""
-        return (
+        standard = (
             self.medical_insurance + self.dental_insurance + self.vision_insurance
             + self.pretax_401k + self.dependent_care_fsa + self.healthcare_fsa
         )
+        custom = sum(
+            v.amount for v in self.custom_field_values
+            if v.field_def.field_type == "pre_tax_deduct"
+        )
+        return standard + custom
+
+    @property
+    def custom_pretax_adder_total(self):
+        """Sum of custom pre-tax addition fields (increase taxable wages)."""
+        return sum(
+            v.amount for v in self.custom_field_values
+            if v.field_def.field_type == "pre_tax_adder"
+        )
+
+    @property
+    def take_home_pay(self):
+        """Net pay after all withholdings and payroll deductions."""
+        custom_posttax_deduct = sum(
+            v.amount for v in self.custom_field_values
+            if v.field_def.field_type == "post_tax_deduct"
+        )
+        custom_posttax_adder = sum(
+            v.amount for v in self.custom_field_values
+            if v.field_def.field_type == "post_tax_adder"
+        )
+        return (
+            self.gross_pay
+            - self.federal_income_withholding
+            - self.ss_withholding
+            - self.medicare_withholding
+            - self.state_income_withholding
+            - self.state_disability_withholding
+            - self.roth_401k
+            - self.pretax_benefit_total
+            + self.custom_pretax_adder_total
+            - custom_posttax_deduct
+            + custom_posttax_adder
+        )
+
+
+CUSTOM_FIELD_TYPES = [
+    ("pre_tax_deduct",  "Pre-tax deduction (reduces taxable wages)"),
+    ("pre_tax_adder",   "Pre-tax addition (increases taxable wages)"),
+    ("post_tax_deduct", "Post-tax deduction"),
+    ("post_tax_adder",  "Post-tax addition"),
+]
 
 
 class PaystubCustomFieldDef(db.Model):
@@ -124,6 +176,7 @@ class PaystubCustomFieldDef(db.Model):
     employer_id = db.Column(db.Integer, db.ForeignKey("employer.id", ondelete="CASCADE"), nullable=False)
     field_name = db.Column(db.String(128), nullable=False)
     sort_order = db.Column(db.Integer, nullable=False, default=0)
+    field_type = db.Column(db.String(32), nullable=False, server_default="post_tax_deduct")
 
     employer = db.relationship("Employer", back_populates="custom_field_defs")
     values = db.relationship("PaystubCustomFieldValue", back_populates="field_def", cascade="all, delete-orphan")
@@ -166,8 +219,10 @@ class SelfEmploymentIncome(db.Model):
     date = db.Column(db.Date, nullable=False)
     category = db.Column(db.String(64), nullable=False, default="consulting")
     notes = db.Column(db.Text, nullable=True)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="SET NULL"), nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="se_income")
+    llc = db.relationship("SingleMemberLLC", back_populates="income")
 
 
 class SelfEmploymentExpense(db.Model):
@@ -180,8 +235,10 @@ class SelfEmploymentExpense(db.Model):
     date = db.Column(db.Date, nullable=False)
     category = db.Column(db.String(64), nullable=False, default="other")
     notes = db.Column(db.Text, nullable=True)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="SET NULL"), nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="se_expenses")
+    llc = db.relationship("SingleMemberLLC", back_populates="expenses")
 
 
 # ---------------------------------------------------------------------------
@@ -280,16 +337,19 @@ class VehicleMileage(db.Model):
     business_miles = db.Column(db.Numeric(8, 1), nullable=False)
     purpose = db.Column(db.String(256), nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="SET NULL"), nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="vehicle_mileage")
+    llc = db.relationship("SingleMemberLLC", back_populates="mileage")
 
 
 # ---------------------------------------------------------------------------
-# Retirement Contributions (IRA / SEP — 401k is via Paystub)
+# Retirement Contributions (IRA / SEP / Solo 401k)
 # ---------------------------------------------------------------------------
 
 RETIREMENT_ACCOUNT_TYPES = [
     "traditional_ira", "roth_ira", "sep_ira",
+    "solo_401k_employee", "solo_401k_employer",
 ]
 
 
@@ -303,8 +363,10 @@ class RetirementContribution(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     date = db.Column(db.Date, nullable=False)
     notes = db.Column(db.Text, nullable=True)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="SET NULL"), nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="retirement_contributions")
+    llc = db.relationship("SingleMemberLLC", back_populates="retirement_contributions")
 
 
 # ---------------------------------------------------------------------------
@@ -344,3 +406,187 @@ class HSAContribution(db.Model):
     notes = db.Column(db.Text, nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="hsa_contributions")
+
+
+# ---------------------------------------------------------------------------
+# Per-Year Tax Rate Settings (overrides constants.py defaults)
+# ---------------------------------------------------------------------------
+
+class TaxYearSettings(db.Model):
+    __tablename__ = "tax_year_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"),
+                            nullable=False, unique=True)
+
+    # Federal scalars (nullable = use constants.py default)
+    federal_standard_deduction = db.Column(db.Numeric(12, 2), nullable=True)
+    ss_wage_base = db.Column(db.Numeric(12, 2), nullable=True)
+    salt_cap = db.Column(db.Numeric(12, 2), nullable=True)
+    child_tax_credit = db.Column(db.Numeric(10, 2), nullable=True)
+    ctc_phase_out_start = db.Column(db.Numeric(12, 2), nullable=True)
+    niit_rate = db.Column(db.Numeric(8, 6), nullable=True)
+    niit_threshold = db.Column(db.Numeric(12, 2), nullable=True)
+    additional_medicare_rate = db.Column(db.Numeric(8, 6), nullable=True)
+    additional_medicare_threshold = db.Column(db.Numeric(12, 2), nullable=True)
+    irs_mileage_rate = db.Column(db.Numeric(8, 4), nullable=True)
+
+    # California scalars
+    ca_standard_deduction = db.Column(db.Numeric(12, 2), nullable=True)
+    ca_sdi_rate = db.Column(db.Numeric(8, 6), nullable=True)
+    ca_mental_health_surtax_rate = db.Column(db.Numeric(8, 6), nullable=True)
+    ca_mental_health_surtax_threshold = db.Column(db.Numeric(12, 2), nullable=True)
+    ca_personal_exemption = db.Column(db.Numeric(10, 2), nullable=True)
+    ca_dependent_credit = db.Column(db.Numeric(10, 2), nullable=True)
+    ca_young_child_credit = db.Column(db.Numeric(10, 2), nullable=True)
+    qualifying_children_under_6 = db.Column(db.Integer, nullable=True)
+
+    # Bracket arrays (JSON-encoded; null = use constants.py default)
+    # Format: [{"rate": 0.10, "upper": 24800}, ..., {"rate": 0.37, "upper": null}]
+    federal_brackets_json = db.Column(db.Text, nullable=True)
+    ltcg_brackets_json = db.Column(db.Text, nullable=True)
+    ca_brackets_json = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="settings")
+
+
+# ---------------------------------------------------------------------------
+# Single-Member LLC (Disregarded Entity)
+# ---------------------------------------------------------------------------
+
+class SingleMemberLLC(db.Model):
+    __tablename__ = "single_member_llc"
+    __table_args__ = (db.UniqueConstraint("tax_year_id", "person", name="uq_llc_year_person"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"), nullable=False)
+    person = db.Column(db.String(64), nullable=False)  # "Person 1" or "Person 2"
+    name = db.Column(db.String(128), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="llcs")
+    home_office = db.relationship("HomeOffice", back_populates="llc", uselist=False, cascade="all, delete-orphan")
+    income = db.relationship("SelfEmploymentIncome", back_populates="llc")
+    expenses = db.relationship("SelfEmploymentExpense", back_populates="llc")
+    mileage = db.relationship("VehicleMileage", back_populates="llc")
+    retirement_contributions = db.relationship("RetirementContribution", back_populates="llc")
+    quarterly_pl = db.relationship("LLCQuarterlyPL", back_populates="llc",
+                                   cascade="all, delete-orphan",
+                                   order_by="LLCQuarterlyPL.quarter")
+
+
+# ---------------------------------------------------------------------------
+# LLC Quarterly P&L Grid
+# ---------------------------------------------------------------------------
+
+class LLCQuarterlyPL(db.Model):
+    __tablename__ = "llc_quarterly_pl"
+    __table_args__ = (db.UniqueConstraint("llc_id", "quarter", name="uq_llc_quarter"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="CASCADE"), nullable=False)
+    quarter = db.Column(db.Integer, nullable=False)  # 1–4
+
+    income       = db.Column(db.Numeric(12, 2), nullable=True)
+    cogs         = db.Column(db.Numeric(12, 2), nullable=True)
+    expenses     = db.Column(db.Numeric(12, 2), nullable=True)
+    other_income = db.Column(db.Numeric(12, 2), nullable=True)
+
+    llc = db.relationship("SingleMemberLLC", back_populates="quarterly_pl")
+
+
+# ---------------------------------------------------------------------------
+# Home Office Deduction (tied to a Single-Member LLC)
+# ---------------------------------------------------------------------------
+
+HOME_OFFICE_DEDUCTION_TYPES = [
+    ("property_taxes",    "Property Taxes"),
+    ("mortgage_interest", "Mortgage Interest"),
+    ("home_insurance",    "Home Insurance"),
+    ("utilities",         "Utilities"),
+    ("garbage",           "Garbage"),
+    ("hoa_dues",          "HOA Dues"),
+    ("depreciation",      "Depreciation (Business % Only)"),
+]
+
+
+class HomeOffice(db.Model):
+    __tablename__ = "home_office"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"), nullable=False)
+    llc_id = db.Column(db.Integer, db.ForeignKey("single_member_llc.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    home_sqft = db.Column(db.Numeric(10, 1), nullable=False)
+    business_sqft = db.Column(db.Numeric(10, 1), nullable=False)
+
+    # Deduction amounts entered by user (whole-home totals except depreciation)
+    property_taxes = db.Column(db.Numeric(12, 2), nullable=True)
+    mortgage_interest = db.Column(db.Numeric(12, 2), nullable=True)
+    home_insurance = db.Column(db.Numeric(12, 2), nullable=True)
+    utilities = db.Column(db.Numeric(12, 2), nullable=True)
+    garbage = db.Column(db.Numeric(12, 2), nullable=True)
+    hoa_dues = db.Column(db.Numeric(12, 2), nullable=True)
+    depreciation = db.Column(db.Numeric(12, 2), nullable=True)  # full business amount
+
+    notes = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="home_offices")
+    llc = db.relationship("SingleMemberLLC", back_populates="home_office")
+
+    @property
+    def business_pct(self):
+        if not self.home_sqft or float(self.home_sqft) == 0:
+            return 0.0
+        return float(self.business_sqft) / float(self.home_sqft)
+
+    def business_amount(self, field):
+        """Return the business portion of a deduction field."""
+        val = getattr(self, field)
+        if val is None:
+            return 0.0
+        if field == "depreciation":
+            return float(val)
+        return float(val) * self.business_pct
+
+    def personal_amount(self, field):
+        """Return the personal (non-business) portion of a deduction field.
+        Only applicable for property_taxes and mortgage_interest.
+        Other fields have no personal deduction."""
+        val = getattr(self, field)
+        if val is None or field not in ("property_taxes", "mortgage_interest"):
+            return 0.0
+        return float(val) * (1.0 - self.business_pct)
+
+
+# ---------------------------------------------------------------------------
+# Interest Income (1099-INT)
+# ---------------------------------------------------------------------------
+
+class InterestIncome(db.Model):
+    __tablename__ = "interest_income"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"), nullable=False)
+    payer = db.Column(db.String(128), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="interest_income")
+
+
+# ---------------------------------------------------------------------------
+# Dividend Income (1099-DIV)
+# ---------------------------------------------------------------------------
+
+class DividendIncome(db.Model):
+    __tablename__ = "dividend_income"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"), nullable=False)
+    payer = db.Column(db.String(128), nullable=False)
+    ordinary_dividends = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    qualified_dividends = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    notes = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="dividend_income")

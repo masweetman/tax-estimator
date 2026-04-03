@@ -21,6 +21,14 @@ from .constants import (
     CDCC_MAX_RATE,
     CDCC_PHASE_DOWN_START,
     SALT_CAP,
+    SALT_PHASE_DOWN_START,
+    SALT_FLOOR,
+    CHARITABLE_NONITEMIZER_CAP_MFJ,
+    QBI_RATE,
+    QBI_THRESHOLD_MFJ,
+    QBI_PHASE_IN_RANGE,
+    SOLO_401K_EMPLOYEE_LIMIT,
+    SOLO_401K_TOTAL_LIMIT,
 )
 
 
@@ -55,6 +63,78 @@ def _marginal_rate(income, brackets):
     return brackets[-1][0]
 
 
+def calculate_solo_401k_max(net_profit, year):
+    """Compute the maximum Solo 401(k) contribution for a Schedule C / SMLLC owner.
+
+    Follows Solo_401k_Instructions.txt exactly:
+      Step 1 – SE Tax Deduction
+        net_se_earnings = net_profit * 0.9235
+        se_tax          = net_se_earnings * 0.153
+        D (deductible)  = se_tax * 0.50
+      Step 2 – Net Earned Income (Plan Compensation)
+        C = net_profit - D
+      Step 3 – Employee Elective Deferral
+        max_employee = min(C, annual_employee_limit)
+      Step 4 – Employer Non-Elective (20% of C for SMLLC / sole proprietor)
+        max_employer = C * 0.20
+      Step 5 – Section 415(c) Total Limit
+        grand_total = min(max_employee + max_employer, total_limit, C)
+
+    Returns a dict with all intermediate values for display.
+    """
+    year = int(year)
+    net_profit = max(0.0, float(net_profit))
+
+    employee_limit = SOLO_401K_EMPLOYEE_LIMIT.get(year, SOLO_401K_EMPLOYEE_LIMIT[2025])
+    total_limit = SOLO_401K_TOTAL_LIMIT.get(year, SOLO_401K_TOTAL_LIMIT[2025])
+
+    net_se_earnings = net_profit * SE_NET_EARNINGS_FACTOR          # * 0.9235
+    se_tax = net_se_earnings * 0.153                                # both halves
+    d = round(se_tax * 0.5, 2)                                      # deductible half
+    c = round(net_profit - d, 2)                                    # Net Earned Income
+
+    max_employee = round(min(c, employee_limit), 2)
+    max_employer = round(c * 0.20, 2)
+    combined = round(max_employee + max_employer, 2)
+    grand_total = round(min(combined, total_limit, max(0.0, c)), 2)
+
+    return {
+        "net_profit": net_profit,
+        "net_se_earnings": round(net_se_earnings, 2),
+        "se_tax": round(se_tax, 2),
+        "se_deductible": d,
+        "net_earned_income": c,
+        "max_employee": max_employee,
+        "max_employer": max_employer,
+        "grand_total": grand_total,
+        "employee_limit": employee_limit,
+        "total_limit": total_limit,
+    }
+
+
+def calculate_qbi(se_net_total, ordinary_taxable, federal_agi, year, inputs):
+    """Compute the §199A Qualified Business Income deduction.
+
+    For sole proprietors / SMLLCs (no W-2 employees), the W-2 wage limitation
+    fully phases out QBI once taxable income exceeds threshold + QBI_PHASE_IN_RANGE.
+    """
+    if se_net_total <= 0:
+        return 0.0
+
+    threshold = inputs.get("qbi_threshold") or QBI_THRESHOLD_MFJ.get(year, QBI_THRESHOLD_MFJ[2025])
+
+    # Phase-out fraction: 0 below threshold, 1 at threshold + range
+    excess = max(0.0, federal_agi - threshold)
+    phase_out_pct = min(1.0, excess / QBI_PHASE_IN_RANGE) if excess > 0 else 0.0
+
+    qbi_gross = se_net_total * QBI_RATE * (1.0 - phase_out_pct)
+
+    # Overall income cap: QBI deduction ≤ 20% of ordinary taxable income
+    income_cap = max(0.0, ordinary_taxable * QBI_RATE)
+
+    return round(min(qbi_gross, income_cap), 2)
+
+
 def calculate_se(inputs):
     """Calculate self-employment tax components.
 
@@ -62,7 +142,7 @@ def calculate_se(inputs):
       se_net_total, se_deduction (half-SE, above-the-line), federal_se_tax
     """
     year = inputs.get("tax_year", 2025)
-    ss_base = SS_WAGE_BASE.get(year, SS_WAGE_BASE[2025])
+    ss_base = inputs.get("ss_wage_base") or SS_WAGE_BASE.get(year, SS_WAGE_BASE[2025])
     w2_wages = float(inputs.get("w2_wages", 0))
 
     se_net_p1 = float(inputs.get("se_net_income_p1", 0))
@@ -105,14 +185,18 @@ def calculate_federal(inputs):
     Returns a dict with all tax line items.
     """
     year = inputs.get("tax_year", 2025)
-    brackets = FEDERAL_BRACKETS_MFJ.get(year, FEDERAL_BRACKETS_MFJ[2025])
-    ltcg_brackets = LTCG_BRACKETS_MFJ.get(year, LTCG_BRACKETS_MFJ[2025])
-    std_deduction = FEDERAL_STANDARD_DEDUCTION_MFJ.get(year, FEDERAL_STANDARD_DEDUCTION_MFJ[2025])
-    ss_base = SS_WAGE_BASE.get(year, SS_WAGE_BASE[2025])
+    brackets = inputs.get("federal_brackets") or FEDERAL_BRACKETS_MFJ.get(year, FEDERAL_BRACKETS_MFJ[2025])
+    ltcg_brackets = inputs.get("ltcg_brackets") or LTCG_BRACKETS_MFJ.get(year, LTCG_BRACKETS_MFJ[2025])
+    std_deduction = inputs.get("federal_standard_deduction") or FEDERAL_STANDARD_DEDUCTION_MFJ.get(year, FEDERAL_STANDARD_DEDUCTION_MFJ[2025])
+    ss_base = inputs.get("ss_wage_base") or SS_WAGE_BASE.get(year, SS_WAGE_BASE[2025])
 
     w2_wages = float(inputs.get("w2_wages", 0))
     ltcg = float(inputs.get("long_term_capital_gains", 0))
     stcg = float(inputs.get("short_term_capital_gains", 0))
+    interest_income = float(inputs.get("interest_income", 0))
+    ordinary_dividends = float(inputs.get("ordinary_dividends", 0))
+    qualified_dividends = min(float(inputs.get("qualified_dividends", 0)), ordinary_dividends)
+    taxable_state_refund = float(inputs.get("taxable_state_refund", 0))
 
     # --- SE components ---
     se = calculate_se(inputs)
@@ -128,11 +212,16 @@ def calculate_federal(inputs):
 
     ira_deduction = float(inputs.get("traditional_ira_total", 0))
     sep_ira = float(inputs.get("sep_ira_total", 0))
+    solo_401k = float(inputs.get("solo_401k_total", 0))
     hsa = float(inputs.get("hsa_total", 0))
     se_health_ins = float(inputs.get("se_health_insurance", 0))
     vehicle_mileage_deduction = float(inputs.get("vehicle_mileage_deduction", 0))
 
-    gross_income = w2_wages + se_net_total + stcg + ltcg
+    # All ordinary dividends enter gross income / AGI.
+    # Qualified dividends are a subset that gets LTCG-rate treatment at the
+    # bracket calculation stage — they do NOT reduce gross income here.
+    gross_income = (w2_wages + se_net_total + stcg + ltcg
+                    + interest_income + ordinary_dividends + taxable_state_refund)
 
     federal_agi = (
         gross_income
@@ -140,6 +229,7 @@ def calculate_federal(inputs):
         - se_deduction
         - ira_deduction
         - sep_ira
+        - solo_401k
         - hsa
         - se_health_ins
     )
@@ -149,11 +239,15 @@ def calculate_federal(inputs):
     mortgage_interest = float(inputs.get("mortgage_interest", 0))
     charitable = float(inputs.get("charitable", 0))
     salt_paid = float(inputs.get("salt_taxes_paid", 0))
-    salt_deductible = min(salt_paid, SALT_CAP)
     medical = max(0.0, float(inputs.get("medical_expenses", 0)) - federal_agi * 0.075)
     # SDI paid is deductible as state tax (but still subject to SALT cap combined)
     ca_sdi = float(inputs.get("ca_sdi_withheld", 0))
-    salt_total = min(salt_paid + ca_sdi, SALT_CAP)
+    # SALT cap: year-keyed, with OBBBA phase-down for high incomes (2026+)
+    salt_cap_base = inputs.get("salt_cap") or SALT_CAP.get(year, SALT_CAP[2025])
+    phase_down_start = SALT_PHASE_DOWN_START.get(year)
+    if phase_down_start and federal_agi > phase_down_start:
+        salt_cap_base = max(SALT_FLOOR, salt_cap_base - (federal_agi - phase_down_start))
+    salt_total = min(salt_paid + ca_sdi, salt_cap_base)
 
     itemized = mortgage_interest + charitable + salt_total + medical
 
@@ -164,19 +258,31 @@ def calculate_federal(inputs):
         deduction = std_deduction
         deduction_type = "standard"
 
+    # Non-itemizer charitable deduction (above-the-line addition when using standard deduction)
+    charitable_nonitemizer_cap = CHARITABLE_NONITEMIZER_CAP_MFJ.get(year, 0)
+    charitable_nonitemizer = min(charitable, charitable_nonitemizer_cap) if deduction_type == "standard" else 0.0
+
     # --- Taxable income ---
     # Capital gains are "stacked" on top of ordinary income for bracket calculation
-    ordinary_income = federal_agi - ltcg  # ordinary part only
-    federal_taxable_income = max(0.0, federal_agi - deduction)
-    ordinary_taxable = max(0.0, federal_taxable_income - ltcg)
+    federal_taxable_income = max(0.0, federal_agi - deduction - charitable_nonitemizer)
+
+    # --- QBI deduction (§199A) ---
+    # Computed against pre-QBI ordinary taxable income for the income cap
+    pre_qbi_ordinary = max(0.0, federal_taxable_income - ltcg)
+    qbi_deduction = calculate_qbi(se_net_total, pre_qbi_ordinary, federal_agi, year, inputs)
+    federal_taxable_income = max(0.0, federal_taxable_income - qbi_deduction)
+
+    ordinary_taxable = max(0.0, federal_taxable_income - ltcg - qualified_dividends)
 
     # --- Ordinary income tax ---
     income_tax = _apply_brackets(ordinary_taxable, brackets)
 
     # --- LTCG tax ---
-    ltcg_for_tax = max(0.0, min(ltcg, federal_taxable_income))
-    # "Stack" ordinary income in lower brackets, LTCG fills above
-    ltcg_base = ordinary_taxable  # income below LTCG
+    # Qualified dividends are taxed at preferential rates alongside LTCG.
+    preferential_income = ltcg + qualified_dividends
+    ltcg_for_tax = max(0.0, min(preferential_income, federal_taxable_income))
+    # "Stack" ordinary income in lower brackets, preferential income fills above
+    ltcg_base = ordinary_taxable  # income below preferential
     ltcg_tax = _apply_brackets(ltcg_base + ltcg_for_tax, ltcg_brackets) - \
                _apply_brackets(ltcg_base, ltcg_brackets)
     ltcg_tax = max(0.0, ltcg_tax)
@@ -185,9 +291,11 @@ def calculate_federal(inputs):
 
     # --- Child Tax Credit ---
     qualifying_children = int(inputs.get("qualifying_children", 0))
-    raw_ctc = qualifying_children * CHILD_TAX_CREDIT
+    ctc_per_child = inputs.get("child_tax_credit") or CHILD_TAX_CREDIT.get(year, CHILD_TAX_CREDIT[2025])
+    raw_ctc = qualifying_children * ctc_per_child
     # Phase out: $50 per $1,000 (or fraction) over threshold
-    excess = max(0.0, federal_agi - CHILD_TAX_CREDIT_PHASE_OUT_START_MFJ)
+    ctc_phase_out_start = inputs.get("ctc_phase_out_start") or CHILD_TAX_CREDIT_PHASE_OUT_START_MFJ
+    excess = max(0.0, federal_agi - ctc_phase_out_start)
     phase_out_units = int((excess + 999) // 1_000) if excess > 0 else 0
     ctc = max(0, raw_ctc - phase_out_units * CHILD_TAX_CREDIT_PHASE_OUT_PER_1K)
 
@@ -216,13 +324,18 @@ def calculate_federal(inputs):
 
     # --- Additional Medicare Tax ---
     total_wages_and_se = w2_wages + se_net_total
-    amt_base = max(0.0, total_wages_and_se - ADDITIONAL_MEDICARE_THRESHOLD_MFJ)
-    additional_medicare_tax = round(amt_base * ADDITIONAL_MEDICARE_RATE, 2)
+    amt_threshold = inputs.get("additional_medicare_threshold") or ADDITIONAL_MEDICARE_THRESHOLD_MFJ
+    amt_rate = inputs.get("additional_medicare_rate") or ADDITIONAL_MEDICARE_RATE
+    amt_base = max(0.0, total_wages_and_se - amt_threshold)
+    additional_medicare_tax = round(amt_base * amt_rate, 2)
 
     # --- Net Investment Income Tax ---
-    nii = ltcg + max(0.0, stcg)  # simplified: NII = capital gains
-    niit_base = min(nii, max(0.0, federal_agi - NIIT_THRESHOLD_MFJ))
-    niit = round(max(0.0, niit_base) * NIIT_RATE, 2)
+    # NII includes capital gains, qualified dividends, interest, and all dividends
+    nii = ltcg + max(0.0, stcg) + interest_income + ordinary_dividends
+    niit_rate = inputs.get("niit_rate") or NIIT_RATE
+    niit_threshold = inputs.get("niit_threshold") or NIIT_THRESHOLD_MFJ
+    niit_base = min(nii, max(0.0, federal_agi - niit_threshold))
+    niit = round(max(0.0, niit_base) * niit_rate, 2)
 
     federal_total_tax = round(
         tax_after_credits + federal_se_tax + additional_medicare_tax + niit, 2
@@ -236,11 +349,15 @@ def calculate_federal(inputs):
         "federal_taxable_income": round(federal_taxable_income, 2),
         "deduction_type": deduction_type,
         "deduction_amount": round(deduction, 2),
+        "charitable_nonitemizer_deduction": round(charitable_nonitemizer, 2),
         "federal_income_tax_before_credits": round(federal_income_tax_before_credits, 2),
         "child_tax_credit": ctc,
         "child_care_credit": child_care_credit,
         "federal_income_tax": round(tax_after_credits, 2),
+        "qbi_deduction": qbi_deduction,
         "se_deduction": se["se_deduction"],
+        "se_health_insurance": round(se_health_ins, 2),
+        "solo_401k_deduction": round(solo_401k, 2),
         "federal_se_tax": federal_se_tax,
         "additional_medicare_tax": additional_medicare_tax,
         "niit": niit,

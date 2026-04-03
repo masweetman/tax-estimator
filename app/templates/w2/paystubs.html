@@ -7,9 +7,17 @@
     <h1 class="h4 mb-0"><i class="bi bi-receipt me-2"></i>{{ employer.name }}</h1>
     <small class="text-muted">{{ person_display(employer.person) }} &mdash; {{ employer.tax_year.year }}</small>
   </div>
-  <a href="{{ url_for('w2.employer_list', year=employer.tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i>Back
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('w2.paystub_import', employer_id=employer.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i>Import PDF
+    </a>
+    <a href="{{ url_for('w2.paystub_add', employer_id=employer.id) }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-plus-lg me-1"></i>Add Paystub
+    </a>
+    <a href="{{ url_for('w2.employer_list', year=employer.tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
 </div>
 
 <div class="table-responsive">
@@ -21,8 +29,10 @@
         <th class="text-end">Gross Pay</th>
         <th class="text-end">Fed Withheld</th>
         <th class="text-end">State Withheld</th>
+        <th class="text-end">Take-Home</th>
         <th class="text-end">YTD Gross</th>
         <th class="text-end">YTD Fed</th>
+        <th class="text-end">YTD Take-Home</th>
         <th></th>
       </tr>
     </thead>
@@ -41,12 +51,23 @@
         <td class="text-end">${{ "%.2f"|format(stub.gross_pay) }}</td>
         <td class="text-end">${{ "%.2f"|format(stub.federal_income_withholding) }}</td>
         <td class="text-end">${{ "%.2f"|format(stub.state_income_withholding) }}</td>
+        <td class="text-end fw-semibold">${{ "%.2f"|format(stub.take_home_pay) }}</td>
         <td class="text-end fw-semibold">${{ "%.2f"|format(row.ytd_gross) }}</td>
         <td class="text-end">${{ "%.2f"|format(row.ytd_federal) }}</td>
+        <td class="text-end fw-semibold">${{ "%.2f"|format(row.ytd_take_home) }}</td>
         <td class="text-end">
-          <a href="{{ url_for('w2.paystub_edit', stub_id=stub.id) }}" class="btn btn-sm btn-outline-primary">
+          <a href="{{ url_for('w2.paystub_import_stub', stub_id=stub.id) }}" class="btn btn-sm btn-outline-secondary" title="Import PDF">
+            <i class="bi bi-file-earmark-arrow-up"></i>
+          </a>
+          <a href="{{ url_for('w2.paystub_edit', stub_id=stub.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
             <i class="bi bi-pencil"></i>
           </a>
+          <form method="post" action="{{ url_for('w2.paystub_delete', stub_id=stub.id) }}" class="d-inline" onsubmit="return confirm('Delete this paystub?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
         </td>
       </tr>
       {% endfor %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Dividend Income – {{ tax_year.year }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Dividend Income &ndash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('deductions.dividend_add', year=tax_year.year) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Add 1099-DIV
+  </a>
+</div>
+
+{% if records %}
+<table class="table table-sm table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Payer</th>
+      <th class="text-end">Ordinary Dividends</th>
+      <th class="text-end">Qualified Dividends</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.payer }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.ordinary_dividends) }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.qualified_dividends) }}</td>
+      <td class="text-end">
+        <a href="{{ url_for('deductions.dividend_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <form method="post" action="{{ url_for('deductions.dividend_delete', rec_id=r.id) }}" class="d-inline"
+              onsubmit="return confirm('Delete this entry?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="fw-bold">
+      <td>Total</td>
+      <td class="text-end">${{ "%.2f"|format(total_ordinary) }}</td>
+      <td class="text-end">${{ "%.2f"|format(total_qualified) }}</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+<div class="text-muted small mt-1">
+  <i class="bi bi-info-circle me-1"></i>
+  Qualified dividends are taxed at long-term capital gains rates.
+  Ordinary dividends = Box 1a of 1099-DIV; Qualified dividends = Box 1b.
+</div>
+{% else %}
+<div class="alert alert-secondary">No dividend income recorded for {{ tax_year.year }}.</div>
+{% endif %}
+
+<a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-outline-secondary mt-2">
+  <i class="bi bi-arrow-left me-1"></i>Dashboard
+</a>
+{% endblock %}

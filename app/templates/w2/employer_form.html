@@ -68,7 +68,12 @@
         <ul class="list-group list-group-flush mb-3">
           {% for fd in employer.custom_field_defs %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ fd.field_name }}
+            <div>
+              {{ fd.field_name }}
+              <span class="badge bg-secondary ms-2 fw-normal">
+                {% for val, label in custom_field_types %}{% if val == fd.field_type %}{{ label }}{% endif %}{% endfor %}
+              </span>
+            </div>
             <form method="post"
                   action="{{ url_for('w2.custom_field_delete', employer_id=employer.id, fd_id=fd.id) }}"
                   class="d-inline" onsubmit="return confirm('Delete this field?')">
@@ -81,10 +86,17 @@
         {% endif %}
         <form method="post" action="{{ url_for('w2.custom_field_add', employer_id=employer.id) }}" class="row g-2">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="col-sm-8">
+          <div class="col-sm-5">
             <input type="text" name="field_name" class="form-control form-control-sm" placeholder="Field name (e.g. Commuter Benefit)" required>
           </div>
-          <div class="col-sm-2">
+          <div class="col-sm-4">
+            <select name="field_type" class="form-select form-select-sm" required>
+              {% for val, label in custom_field_types %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-1">
             <input type="number" name="sort_order" class="form-control form-control-sm" placeholder="Order" value="0">
           </div>
           <div class="col-sm-2">

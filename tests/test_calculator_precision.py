@@ -402,11 +402,13 @@ class TestCaliforniaPrecision:
     def test_ca_tax_in_first_bracket_only(self):
         """CA taxable income fully within the 1% bracket.
         w2=26,392 → ca_agi=26,392 → ca_taxable=26392-11392=15,000
-        ca_tax = 15000 × 1% = $150.00
+        ca_tax_before_credits = 15000 × 1% = $150.00
+        CA personal exemption ($314 MFJ) exceeds pre-credit tax → after-credit tax = $0.
         """
         result = calc(w2_wages=26_392)
         assert result["ca_taxable_income"] == pytest.approx(15_000.0)
-        assert result["ca_income_tax"] == pytest.approx(150.0)
+        assert result["ca_income_tax_before_surtax"] == pytest.approx(150.0)
+        assert result["ca_income_tax"] == pytest.approx(0.0)
 
     def test_ca_uses_itemized_when_mortgage_exceeds_ca_standard(self):
         """CA standard deduction ($11,392) is much lower than federal ($30,000).

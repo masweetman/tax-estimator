@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ tax_year.year }} — Tax Estimator{% endblock %}
+
+{% macro scalar_field(label, name, default_val, pct=false, help=None) %}
+{% set cur_val = s[name] if s and s[name] is not none else none %}
+<div class="col-sm-6 col-lg-4 mb-3">
+  <label class="form-label">{{ label }}</label>
+  <div class="input-group input-group-sm">
+    {% if not pct %}<span class="input-group-text">$</span>{% endif %}
+    <input type="number" step="{{ '0.0001' if pct else '1' }}" min="0"
+           name="{{ name }}" class="form-control"
+           placeholder="{{ default_val }}"
+           value="{{ cur_val if cur_val is not none else '' }}">
+    {% if pct %}<span class="input-group-text">rate</span>{% endif %}
+  </div>
+  {% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-10">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="h3 mb-0"><i class="bi bi-gear me-2"></i>Tax Settings — {{ tax_year.year }}</h1>
+      <a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Dashboard
+      </a>
+    </div>
+
+    {% if s %}
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-exclamation-triangle me-2"></i>Custom settings are active for {{ tax_year.year }}. These override the built-in constants.</span>
+      <form method="post" class="d-inline ms-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reset">
+        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Reset all settings to defaults?')">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to Defaults
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>Using built-in defaults for {{ tax_year.year }}. Leave fields blank to keep a default value.
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Tax Year — Basic figures (prior-year & taxable state refund)        #}
+    {# ------------------------------------------------------------------ #}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold">Tax Year {{ tax_year.year }} — Income &amp; Prior-Year Figures</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('tax_years.update_basic', year=tax_year.year) }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row">
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label">Prior Year Federal Tax ($)</label>
+              <input type="number" step="0.01" min="0" name="prior_year_federal_tax" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(tax_year.prior_year_federal_tax|float) if tax_year.prior_year_federal_tax else '' }}">
+            </div>
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label">Prior Year CA Tax ($)</label>
+              <input type="number" step="0.01" min="0" name="prior_year_ca_tax" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(tax_year.prior_year_ca_tax|float) if tax_year.prior_year_ca_tax else '' }}">
+            </div>
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label">Prior Year AGI ($)</label>
+              <input type="number" step="0.01" min="0" name="prior_year_agi" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(tax_year.prior_year_agi|float) if tax_year.prior_year_agi else '' }}">
+            </div>
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label">Taxable State Refund ($)
+                <span class="text-muted small" data-bs-toggle="tooltip"
+                      title="Prior-year state refund that is federally taxable (Schedule 1 Line 1)">
+                  <i class="bi bi-question-circle"></i>
+                </span>
+              </label>
+              <input type="number" step="0.01" min="0" name="taxable_state_refund" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(tax_year.taxable_state_refund|float) if tax_year.taxable_state_refund else '' }}"
+                     placeholder="0.00">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <form method="post" id="settings-form" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      {# ------------------------------------------------------------------ #}
+      {# Federal scalars                                                     #}
+      {# ------------------------------------------------------------------ #}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Federal — Scalars</div>
+        <div class="card-body row">
+          {{ scalar_field("Standard Deduction (MFJ)", "federal_standard_deduction", defaults.federal_standard_deduction) }}
+          {{ scalar_field("SS Wage Base", "ss_wage_base", defaults.ss_wage_base) }}
+          {{ scalar_field("SALT Cap", "salt_cap", defaults.salt_cap) }}
+          {{ scalar_field("Child Tax Credit (per child)", "child_tax_credit", defaults.child_tax_credit) }}
+          {{ scalar_field("CTC Phase-Out Start", "ctc_phase_out_start", defaults.ctc_phase_out_start) }}
+          {{ scalar_field("NIIT Rate", "niit_rate", defaults.niit_rate, pct=true) }}
+          {{ scalar_field("NIIT Threshold", "niit_threshold", defaults.niit_threshold) }}
+          {{ scalar_field("Add'l Medicare Rate", "additional_medicare_rate", defaults.additional_medicare_rate, pct=true) }}
+          {{ scalar_field("Add'l Medicare Threshold", "additional_medicare_threshold", defaults.additional_medicare_threshold) }}
+          {{ scalar_field("IRS Mileage Rate ($/mile)", "irs_mileage_rate", defaults.irs_mileage_rate, pct=true, help="e.g. 0.70") }}
+        </div>
+      </div>
+
+      {# ------------------------------------------------------------------ #}
+      {# Federal income tax brackets                                         #}
+      {# ------------------------------------------------------------------ #}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Federal — Ordinary Income Brackets (MFJ)</div>
+        <div class="card-body">
+          <p class="text-muted small">Rate as a decimal (e.g. 0.22). Upper bound blank = top bracket (no limit).</p>
+          <input type="hidden" name="federal_brackets_json" id="federal_brackets_json"
+                 value="{{ (s.federal_brackets_json if s and s.federal_brackets_json) or defaults.federal_brackets_json }}">
+          {{ _bracket_table("federal_brackets_table", "federal_brackets_json",
+                             (s.federal_brackets_json if s and s.federal_brackets_json) or defaults.federal_brackets_json) }}
+        </div>
+      </div>
+
+      {# ------------------------------------------------------------------ #}
+      {# LTCG brackets                                                       #}
+      {# ------------------------------------------------------------------ #}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Federal — Long-Term Capital Gains Brackets (MFJ)</div>
+        <div class="card-body">
+          <input type="hidden" name="ltcg_brackets_json" id="ltcg_brackets_json"
+                 value="{{ (s.ltcg_brackets_json if s and s.ltcg_brackets_json) or defaults.ltcg_brackets_json }}">
+          {{ _bracket_table("ltcg_brackets_table", "ltcg_brackets_json",
+                             (s.ltcg_brackets_json if s and s.ltcg_brackets_json) or defaults.ltcg_brackets_json) }}
+        </div>
+      </div>
+
+      {# ------------------------------------------------------------------ #}
+      {# California scalars                                                  #}
+      {# ------------------------------------------------------------------ #}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">California — Scalars</div>
+        <div class="card-body row">
+          {{ scalar_field("CA Standard Deduction (MFJ)", "ca_standard_deduction", defaults.ca_standard_deduction) }}
+          {{ scalar_field("CA SDI Rate", "ca_sdi_rate", defaults.ca_sdi_rate, pct=true) }}
+          {{ scalar_field("Mental Health Surtax Rate", "ca_mental_health_surtax_rate", defaults.ca_mental_health_surtax_rate, pct=true) }}
+          {{ scalar_field("Mental Health Surtax Threshold", "ca_mental_health_surtax_threshold", defaults.ca_mental_health_surtax_threshold) }}
+          {{ scalar_field("CA Personal Exemption (MFJ)", "ca_personal_exemption", defaults.ca_personal_exemption, help="Nonrefundable MFJ exemption credit") }}
+          {{ scalar_field("CA Dependent Credit (per child)", "ca_dependent_credit", defaults.ca_dependent_credit) }}
+          {{ scalar_field("CA Young Child Credit (per child under 6)", "ca_young_child_credit", defaults.ca_young_child_credit) }}
+          <div class="col-sm-6 col-lg-4 mb-3">
+            <label class="form-label">Children Under Age 6</label>
+            <input type="number" step="1" min="0" max="10" name="qualifying_children_under_6"
+                   class="form-control form-control-sm"
+                   placeholder="{{ defaults.qualifying_children_under_6 }}"
+                   value="{{ (s.qualifying_children_under_6 if s and s.qualifying_children_under_6 is not none else '') }}">
+            <div class="form-text">Qualifying for CA Young Child Tax Credit</div>
+          </div>
+        </div>
+      </div>
+
+      {# ------------------------------------------------------------------ #}
+      {# CA income tax brackets                                              #}
+      {# ------------------------------------------------------------------ #}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">California — Income Tax Brackets (MFJ)</div>
+        <div class="card-body">
+          <input type="hidden" name="ca_brackets_json" id="ca_brackets_json"
+                 value="{{ (s.ca_brackets_json if s and s.ca_brackets_json) or defaults.ca_brackets_json }}">
+          {{ _bracket_table("ca_brackets_table", "ca_brackets_json",
+                             (s.ca_brackets_json if s and s.ca_brackets_json) or defaults.ca_brackets_json) }}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mb-5">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-floppy me-1"></i>Save Settings</button>
+        <a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+
+    </form>
+
+    <div class="card border-danger mb-5">
+      <div class="card-header text-danger fw-semibold"><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</div>
+      <div class="card-body">
+        <p class="mb-3">Permanently delete tax year <strong>{{ tax_year.year }}</strong> and <strong>all associated data</strong> (paystubs, SE income, deductions, payments, etc.). This cannot be undone.</p>
+        <form method="post" action="{{ url_for('tax_years.delete', year=tax_year.year) }}" onsubmit="return confirm('Delete tax year {{ tax_year.year }} and ALL its data? This cannot be undone.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Delete Tax Year {{ tax_year.year }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% macro _bracket_table(table_id, hidden_id, json_val) %}
+<table class="table table-sm table-bordered" id="{{ table_id }}">
+  <thead class="table-light">
+    <tr>
+      <th style="width:30%">Rate (decimal)</th>
+      <th>Upper Bound ($, blank = no limit)</th>
+      <th style="width:50px"></th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<button type="button" class="btn btn-sm btn-outline-secondary" onclick="addBracketRow('{{ table_id }}', '{{ hidden_id }}')">
+  <i class="bi bi-plus-lg me-1"></i>Add Row
+</button>
+<script>
+(function() {
+  var data = {{ json_val | safe }};
+  var tableId = '{{ table_id }}';
+  var hiddenId = '{{ hidden_id }}';
+
+  function syncHidden() {
+    var rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+    var result = [];
+    rows.forEach(function(row) {
+      var rate = parseFloat(row.querySelector('.bracket-rate').value);
+      var upperVal = row.querySelector('.bracket-upper').value.trim();
+      var upper = upperVal === '' ? null : parseFloat(upperVal);
+      if (!isNaN(rate)) result.push({rate: rate, upper: upper});
+    });
+    document.getElementById(hiddenId).value = JSON.stringify(result);
+  }
+
+  function makeRow(rate, upper) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><input type="number" step="0.001" min="0" max="1" class="form-control form-control-sm bracket-rate" value="' + rate + '"></td>' +
+      '<td><input type="number" step="1" min="0" class="form-control form-control-sm bracket-upper" value="' + (upper === null ? '' : upper) + '" placeholder="no limit"></td>' +
+      '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove(); syncHidden_' + tableId.replace(/-/g,'_') + '()"><i class="bi bi-x"></i></button></td>';
+    tr.querySelectorAll('input').forEach(function(inp) { inp.addEventListener('input', syncHidden); });
+    return tr;
+  }
+
+  // expose syncHidden under a stable name
+  window['syncHidden_' + tableId.replace(/-/g,'_')] = syncHidden;
+
+  data.forEach(function(r) {
+    document.querySelector('#' + tableId + ' tbody').appendChild(makeRow(r.rate, r.upper));
+  });
+  syncHidden();
+})();
+
+function addBracketRow(tableId, hiddenId) {
+  var tbody = document.querySelector('#' + tableId + ' tbody');
+  var syncFn = window['syncHidden_' + tableId.replace(/-/g,'_')];
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td><input type="number" step="0.001" min="0" max="1" class="form-control form-control-sm bracket-rate" value="0"></td>' +
+    '<td><input type="number" step="1" min="0" class="form-control form-control-sm bracket-upper" placeholder="no limit"></td>' +
+    '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove(); syncFn()"><i class="bi bi-x"></i></button></td>';
+  tr.querySelectorAll('input').forEach(function(inp) { inp.addEventListener('input', syncFn); });
+  tbody.appendChild(tr);
+  syncFn();
+}
+</script>
+{% endmacro %}

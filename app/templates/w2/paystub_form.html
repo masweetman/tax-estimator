@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Paystub — {{ stub.pay_date.strftime('%b %d, %Y') }} — Tax Estimator{% endblock %}
+{% set adding = stub is none %}
+{% block title %}{% if adding %}Add Paystub{% else %}Paystub — {{ stub.pay_date.strftime('%b %d, %Y') }}{% endif %} — Tax Estimator{% endblock %}
 
 {% macro money_field(label, name, value) %}
 <div class="col-sm-6 col-md-4 mb-3">
@@ -18,47 +19,83 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
         <h1 class="h4 mb-0">{{ employer.name }}</h1>
+        {% if not adding %}
         <small class="text-muted">Pay date: {{ stub.pay_date.strftime('%B %d, %Y') }}
           {% if stub.is_actual %}<span class="badge bg-success ms-2">Actual</span>
           {% else %}<span class="badge bg-light text-secondary border ms-2">Estimated</span>{% endif %}
         </small>
+        {% else %}
+        <small class="text-muted">New paystub</small>
+        {% endif %}
       </div>
       <a href="{{ url_for('w2.paystub_list', employer_id=employer.id) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
       </a>
     </div>
 
+    {% if prefill and prefill.get('_warnings') %}
+    <div class="alert alert-warning">
+      <strong><i class="bi bi-exclamation-triangle me-1"></i>Import warnings — unrecognized lines:</strong>
+      <ul class="mb-0 mt-1">
+        {% for w in prefill['_warnings'] %}<li class="small">{{ w }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
     <form method="post" novalidate>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      {% if adding %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Dates</div>
+        <div class="card-body row">
+          <div class="col-sm-4 mb-3">
+            <label class="form-label">Pay Date <span class="text-danger">*</span></label>
+            <input type="date" name="pay_date" class="form-control form-control-sm" required
+                   value="{{ prefill.get('pay_date', '') }}">
+          </div>
+          <div class="col-sm-4 mb-3">
+            <label class="form-label">Period Start <span class="text-muted small">(optional)</span></label>
+            <input type="date" name="pay_period_start" class="form-control form-control-sm"
+                   value="{{ prefill.get('pay_period_start', '') }}">
+          </div>
+          <div class="col-sm-4 mb-3">
+            <label class="form-label">Period End <span class="text-muted small">(optional)</span></label>
+            <input type="date" name="pay_period_end" class="form-control form-control-sm"
+                   value="{{ prefill.get('pay_period_end', '') }}">
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
       <div class="card shadow-sm mb-3">
         <div class="card-header fw-semibold">Income</div>
         <div class="card-body row">
-          {{ money_field("Gross Pay", "gross_pay", stub.gross_pay) }}
+          {{ money_field("Gross Pay", "gross_pay", prefill.get('gross_pay', 0 if adding else stub.gross_pay)) }}
         </div>
       </div>
 
       <div class="card shadow-sm mb-3">
         <div class="card-header fw-semibold">Tax Withholding</div>
         <div class="card-body row">
-          {{ money_field("Federal Income Tax", "federal_income_withholding", stub.federal_income_withholding) }}
-          {{ money_field("Social Security", "ss_withholding", stub.ss_withholding) }}
-          {{ money_field("Medicare", "medicare_withholding", stub.medicare_withholding) }}
-          {{ money_field("CA State Income Tax", "state_income_withholding", stub.state_income_withholding) }}
-          {{ money_field("CA SDI", "state_disability_withholding", stub.state_disability_withholding) }}
+          {{ money_field("Federal Income Tax", "federal_income_withholding", prefill.get('federal_income_withholding', 0 if adding else stub.federal_income_withholding)) }}
+          {{ money_field("Social Security", "ss_withholding", prefill.get('ss_withholding', 0 if adding else stub.ss_withholding)) }}
+          {{ money_field("Medicare", "medicare_withholding", prefill.get('medicare_withholding', 0 if adding else stub.medicare_withholding)) }}
+          {{ money_field("CA State Income Tax", "state_income_withholding", prefill.get('state_income_withholding', 0 if adding else stub.state_income_withholding)) }}
+          {{ money_field("CA SDI", "state_disability_withholding", prefill.get('state_disability_withholding', 0 if adding else stub.state_disability_withholding)) }}
         </div>
       </div>
 
       <div class="card shadow-sm mb-3">
         <div class="card-header fw-semibold">Pre-Tax Benefits</div>
         <div class="card-body row">
-          {{ money_field("Medical Insurance", "medical_insurance", stub.medical_insurance) }}
-          {{ money_field("Dental Insurance", "dental_insurance", stub.dental_insurance) }}
-          {{ money_field("Vision Insurance", "vision_insurance", stub.vision_insurance) }}
-          {{ money_field("401(k) Pre-Tax", "pretax_401k", stub.pretax_401k) }}
-          {{ money_field("Roth 401(k)", "roth_401k", stub.roth_401k) }}
-          {{ money_field("Dependent Care FSA", "dependent_care_fsa", stub.dependent_care_fsa) }}
-          {{ money_field("Healthcare FSA", "healthcare_fsa", stub.healthcare_fsa) }}
+          {{ money_field("Medical Insurance", "medical_insurance", prefill.get('medical_insurance', 0 if adding else stub.medical_insurance)) }}
+          {{ money_field("Dental Insurance", "dental_insurance", prefill.get('dental_insurance', 0 if adding else stub.dental_insurance)) }}
+          {{ money_field("Vision Insurance", "vision_insurance", prefill.get('vision_insurance', 0 if adding else stub.vision_insurance)) }}
+          {{ money_field("401(k) Pre-Tax", "pretax_401k", prefill.get('pretax_401k', 0 if adding else stub.pretax_401k)) }}
+          {{ money_field("Roth 401(k)", "roth_401k", prefill.get('roth_401k', 0 if adding else stub.roth_401k)) }}
+          {{ money_field("Dependent Care FSA", "dependent_care_fsa", prefill.get('dependent_care_fsa', 0 if adding else stub.dependent_care_fsa)) }}
+          {{ money_field("Healthcare FSA", "healthcare_fsa", prefill.get('healthcare_fsa', 0 if adding else stub.healthcare_fsa)) }}
         </div>
       </div>
 
@@ -67,7 +104,7 @@
         <div class="card-header fw-semibold">Other</div>
         <div class="card-body row">
           {% for fd in custom_defs %}
-          {{ money_field(fd.field_name, "custom_" ~ fd.id, cf_values.get(fd.id, 0)) }}
+          {{ money_field(fd.field_name, "custom_" ~ fd.id, prefill.get("custom_" ~ fd.id|string, cf_values.get(fd.id, 0))) }}
           {% endfor %}
         </div>
       </div>
@@ -77,15 +114,15 @@
         <div class="card-body row">
           <div class="col-12 mb-3">
             <label class="form-label">Notes</label>
-            <textarea name="notes" class="form-control form-control-sm" rows="2">{{ stub.notes or '' }}</textarea>
+            <textarea name="notes" class="form-control form-control-sm" rows="2">{{ '' if adding else (stub.notes or '') }}</textarea>
           </div>
           <div class="col-12">
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="is_actual" name="is_actual" value="true"
-                     {{ 'checked' if stub.is_actual }}>
+                     {{ 'checked' if adding or prefill.get('_from_pdf') or (not adding and stub.is_actual) }}>
               <label class="form-check-label" for="is_actual">
                 Mark as <strong>actual</strong>
-                <span class="text-muted small">(future estimated pay periods will copy these values)</span>
+                {% if not adding %}<span class="text-muted small">(future estimated pay periods will copy these values)</span>{% endif %}
               </label>
             </div>
           </div>
@@ -93,7 +130,7 @@
       </div>
 
       <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Save Paystub</button>
+        <button type="submit" class="btn btn-primary">{% if adding %}Add Paystub{% else %}Save Paystub{% endif %}</button>
         <a href="{{ url_for('w2.paystub_list', employer_id=employer.id) }}" class="btn btn-outline-secondary">Cancel</a>
       </div>
     </form>

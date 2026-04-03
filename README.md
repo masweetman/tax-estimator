@@ -37,14 +37,14 @@ SECRET_KEY=dev-secret-change-me
 ### 3. Initialise the database
 
 ```bash
+mkdir -p instance
+```
+```bash
 python -c "from app import create_app, db; app=create_app('development'); app.app_context().push(); db.create_all(); print('Database initialised')"
 ```
 
 ### 4. Create a user and run the dev server
 
-```bash
-mkdir -p instance
-```
 ```bash
 python3 - <<'EOF'
 from app import create_app, db

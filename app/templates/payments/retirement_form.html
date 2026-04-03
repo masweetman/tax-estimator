@@ -3,6 +3,7 @@
 {% block content %}
 <h2>{% if record %}Edit{% else %}Add{% endif %} Retirement Contribution</h2>
 <form method="post" class="mt-3" style="max-width:520px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="mb-3">
     <label class="form-label">Person</label>
     <select name="person" class="form-select" required>
@@ -12,12 +13,28 @@
   </div>
   <div class="mb-3">
     <label class="form-label">Account Type</label>
-    <select name="account_type" class="form-select" required>
+    <select name="account_type" id="account_type" class="form-select" required>
       {% for at in account_types %}
-      <option value="{{ at }}" {{ 'selected' if record and record.account_type == at }}>{{ at|replace('_',' ')|upper }}</option>
+      <option value="{{ at }}" {{ 'selected' if record and record.account_type == at }}>
+        {%- if at == 'solo_401k_employee' %}Solo 401(k) &mdash; Employee Deferral
+        {%- elif at == 'solo_401k_employer' %}Solo 401(k) &mdash; Employer Contribution
+        {%- else %}{{ at|replace('_',' ')|upper }}
+        {%- endif -%}
+      </option>
       {% endfor %}
     </select>
   </div>
+  {% if llcs %}
+  <div class="mb-3" id="llc_field" style="display:none">
+    <label class="form-label">LLC</label>
+    <select name="llc_id" id="llc_id" class="form-select">
+      <option value="">— None —</option>
+      {% for llc in llcs %}
+      <option value="{{ llc.id }}" {{ 'selected' if record and record.llc_id == llc.id }}>{{ llc.name }} ({{ llc.person }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
   <div class="mb-3">
     <label class="form-label">Date</label>
     <input name="date" type="date" class="form-control" required
@@ -35,4 +52,18 @@
   <button type="submit" class="btn btn-primary">Save</button>
   <a href="{{ url_for('payments.retirement_list', year=tax_year.year) }}" class="btn btn-secondary ms-2">Cancel</a>
 </form>
+{% if llcs %}
+<script>
+(function () {
+  const SOLO_TYPES = ['solo_401k_employee', 'solo_401k_employer'];
+  const typeSelect = document.getElementById('account_type');
+  const llcField  = document.getElementById('llc_field');
+  function toggle() {
+    llcField.style.display = SOLO_TYPES.includes(typeSelect.value) ? '' : 'none';
+  }
+  typeSelect.addEventListener('change', toggle);
+  toggle();  // run on page load to handle edit-mode pre-selection
+}());
+</script>
+{% endif %}
 {% endblock %}
