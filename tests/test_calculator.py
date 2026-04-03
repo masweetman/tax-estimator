@@ -99,7 +99,7 @@ class TestConstants:
 
     def test_ca_standard_deduction_mfj(self):
         from app.calculator.constants import CA_STANDARD_DEDUCTION_MFJ
-        assert CA_STANDARD_DEDUCTION_MFJ[2025] > 0
+        assert CA_STANDARD_DEDUCTION_MFJ[2025] == 11_392
 
     def test_ca_mental_health_surtax_threshold(self):
         from app.calculator.constants import CA_MENTAL_HEALTH_SURTAX_THRESHOLD
@@ -230,15 +230,40 @@ class TestCaliforniaTax:
             assert key in result, f"Missing key: {key}"
 
     def test_ca_standard_vs_itemized(self):
-        """CA itemized should be used when it exceeds CA standard deduction."""
-        result = _calc(mortgage_interest=40_000, charitable=5_000)
-        assert result.get("ca_deduction_type") in ("standard", "itemized")
+        """CA itemized when mortgage alone exceeds the tiny CA std deduction ($11,392).
+
+        Importantly, the same mortgage is below the federal std deduction ($30,000),
+        so federal uses standard while CA uses itemized.
+        """
+        result = _calc(
+            mortgage_interest=15_000,
+            charitable=0,
+            salt_taxes_paid=0,
+            ca_sdi_withheld=0,
+        )
+        assert result.get("ca_deduction_type") == "itemized"
+        assert result.get("deduction_type") == "standard"
 
     def test_ca_sdi_not_a_deduction_for_ca(self):
-        """SDI is deductible only on federal Schedule A, not on CA return."""
-        # Just ensuring no crash and the field exists
-        result = _calc()
-        assert "ca_income_tax" in result
+        """SDI is deductible on federal Schedule A but NOT on CA return.
+
+        Adding SDI withholding should not reduce CA income tax.  With a large
+        enough mortgage to force itemizing on both federal and CA, the CA tax
+        must be identical whether SDI is zero or non-zero.
+        """
+        base = dict(
+            w2_wages=300_000,
+            mortgage_interest=35_000,  # > federal AND CA std deductions
+            charitable=0,
+            salt_taxes_paid=0,
+        )
+        result_no_sdi = _calc(ca_sdi_withheld=0, **base)
+        result_with_sdi = _calc(ca_sdi_withheld=6_000, **base)
+        # CA return does not allow SDI deduction — tax must be identical
+        assert result_no_sdi["ca_income_tax"] == result_with_sdi["ca_income_tax"]
+        # Federal: SDI counts toward SALT — federal AGI must be same (AGI is before
+        # itemized deductions), but SDI shifts which bracket itemized is in
+        assert result_no_sdi["federal_agi"] == result_with_sdi["federal_agi"]
 
     def test_ca_mental_health_surtax(self):
         """1% surtax on CA taxable income above $1M."""
@@ -267,10 +292,10 @@ class TestSafeHarbor:
         result = _calc(prior_year_federal_tax=20_000, prior_year_agi=200_000)
         assert result["safe_harbor_federal"] == pytest.approx(22_000.0)
 
-    def test_safe_harbor_ca_100pct_or_90pct_current(self):
-        """CA safe harbor: 100% of prior-year CA tax OR 90% of current CA tax."""
-        result = _calc(prior_year_ca_tax=5_000)
-        assert result.get("safe_harbor_ca") is not None
+    def test_safe_harbor_ca_equals_prior_year_ca_tax(self):
+        """CA safe harbor = exactly 100% of prior-year CA tax."""
+        result = _calc(prior_year_ca_tax=6_500)
+        assert result["safe_harbor_ca"] == pytest.approx(6_500.0)
 
     def test_quarterly_federal_recommendation(self):
         """Each quarterly payment = (safe_harbor - withholding_ytd) / remaining_quarters."""
@@ -315,9 +340,34 @@ class TestSummary:
         assert result["ca_balance_due"] == pytest.approx(expected)
 
     def test_effective_federal_rate(self):
-        result = _calc()
-        rate = result.get("effective_federal_rate", 0)
-        assert 0 < rate < 1
+        """effective_federal_rate = federal_income_tax / federal_agi.
+
+        Verify the formula holds, and that the rate is in a plausible range for
+        a $200 k single-income W-2 household after standard deduction.
+        """
+        result = _calc(
+            w2_wages=200_000,
+            pretax_401k_total=0,
+            traditional_ira_total=0,
+            hsa_total=0,
+            mortgage_interest=0,
+            charitable=0,
+            salt_taxes_paid=0,
+            ca_sdi_withheld=0,
+            qualifying_children=0,
+            child_care_expenses=0,
+            se_net_income_p1=0,
+            se_net_income_p2=0,
+            long_term_capital_gains=0,
+            short_term_capital_gains=0,
+        )
+        rate = result["effective_federal_rate"]
+        # Rough sanity: 200k W-2, $30k std deduction → ~10–20% effective rate
+        assert 0.10 <= rate <= 0.20
+        # Formula check: effective_rate = income_tax / AGI
+        assert rate == pytest.approx(
+            result["federal_income_tax"] / result["federal_agi"], abs=0.0001
+        )
 
     def test_marginal_federal_rate(self):
         result = _calc(w2_wages=200_000)

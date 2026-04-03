@@ -47,9 +47,13 @@ def auth_client(app, client):
             _db.session.add(user)
             _db.session.commit()
 
+    with app.app_context():
+        user = User.query.filter_by(username="testuser").first()
+        actual_id = str(user.id) if user else "1"
+
     with client.session_transaction() as sess:
-        # Directly set Flask-Login session variables
-        sess["_user_id"] = "1"
+        # Directly set Flask-Login session variables using the actual user ID
+        sess["_user_id"] = actual_id
         sess["_fresh"] = True
 
     return client
