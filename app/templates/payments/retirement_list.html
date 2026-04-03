@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Retirement Contributions – {{ tax_year.year }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Retirement Contributions &ndash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('payments.retirement_add', year=tax_year.year) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Add Contribution
+  </a>
+</div>
+
+{% if records %}
+<table class="table table-sm table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Date</th><th>Person</th><th>Account Type</th>
+      <th class="text-end">Amount</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.date }}</td>
+      <td>{{ r.person }}</td>
+      <td>{{ r.account_type|replace('_',' ')|upper }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">
+        <a href="{{ url_for('payments.retirement_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <form method="post" action="{{ url_for('payments.retirement_delete', rec_id=r.id) }}" class="d-inline"
+              onsubmit="return confirm('Delete this entry?')">
+          <button class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="fw-bold">
+      <td colspan="3">Total</td>
+      <td class="text-end">${{ "%.2f"|format(total) }}</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+{% else %}
+<p class="text-muted">No retirement contributions recorded yet.</p>
+{% endif %}
+{% endblock %}

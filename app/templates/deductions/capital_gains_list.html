@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Capital Gains – {{ tax_year.year }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Capital Gains &ndash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('deductions.capital_gains_add', year=tax_year.year) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Add Sale
+  </a>
+</div>
+
+{% if records %}
+<table class="table table-sm table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Sale Date</th><th>Person</th><th>Description</th><th>Term</th>
+      <th class="text-end">Proceeds</th><th class="text-end">Basis</th>
+      <th class="text-end">Gain/Loss</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.sale_date }}</td>
+      <td>{{ r.person }}</td>
+      <td>{{ r.description }}</td>
+      <td>{{ 'Long' if r.is_long_term else 'Short' }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.proceeds) }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.cost_basis) }}</td>
+      <td class="text-end {% if r.gain < 0 %}text-danger{% endif %}">${{ "%.2f"|format(r.gain) }}</td>
+      <td class="text-end">
+        <a href="{{ url_for('deductions.capital_gains_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <form method="post" action="{{ url_for('deductions.capital_gains_delete', rec_id=r.id) }}" class="d-inline"
+              onsubmit="return confirm('Delete this entry?')">
+          <button class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="fw-bold">
+      <td colspan="6">Long-term gain total</td>
+      <td class="text-end">${{ "%.2f"|format(total_lt) }}</td><td></td>
+    </tr>
+    <tr class="fw-bold">
+      <td colspan="6">Short-term gain total</td>
+      <td class="text-end">${{ "%.2f"|format(total_st) }}</td><td></td>
+    </tr>
+  </tfoot>
+</table>
+{% else %}
+<p class="text-muted">No capital gains recorded yet.</p>
+{% endif %}
+{% endblock %}

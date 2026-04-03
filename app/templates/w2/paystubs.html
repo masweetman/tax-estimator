@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Paystubs — {{ employer.name }} — Tax Estimator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h4 mb-0"><i class="bi bi-receipt me-2"></i>{{ employer.name }}</h1>
+    <small class="text-muted">{{ employer.person }} &mdash; {{ employer.tax_year.year }}</small>
+  </div>
+  <a href="{{ url_for('w2.employer_list', year=employer.tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Pay Date</th>
+        <th>Status</th>
+        <th class="text-end">Gross Pay</th>
+        <th class="text-end">Fed Withheld</th>
+        <th class="text-end">State Withheld</th>
+        <th class="text-end">YTD Gross</th>
+        <th class="text-end">YTD Fed</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set stub = row.stub %}
+      <tr class="{{ '' if stub.is_actual else 'text-muted' }}">
+        <td>{{ stub.pay_date.strftime('%b %d, %Y') }}</td>
+        <td>
+          {% if stub.is_actual %}
+            <span class="badge bg-success">Actual</span>
+          {% else %}
+            <span class="badge bg-light text-secondary border">Est.</span>
+          {% endif %}
+        </td>
+        <td class="text-end">${{ "%.2f"|format(stub.gross_pay) }}</td>
+        <td class="text-end">${{ "%.2f"|format(stub.federal_income_withholding) }}</td>
+        <td class="text-end">${{ "%.2f"|format(stub.state_income_withholding) }}</td>
+        <td class="text-end fw-semibold">${{ "%.2f"|format(row.ytd_gross) }}</td>
+        <td class="text-end">${{ "%.2f"|format(row.ytd_federal) }}</td>
+        <td class="text-end">
+          <a href="{{ url_for('w2.paystub_edit', stub_id=stub.id) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

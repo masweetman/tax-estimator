@@ -1,0 +1,59 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+.env/
+
+# Flask instance folder (contains the database)
+instance/
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Environment / secrets
+.env
+
+# Build / distribution
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Test & coverage
+.pytest_cache/
+.coverage
+
+# Deployment files (server-specific config, not for version control)
+deploy/
+htmlcov/
+coverage.xml
+*.cover
+
+# Logs
+*.log

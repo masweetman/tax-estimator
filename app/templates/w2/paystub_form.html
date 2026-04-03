@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Paystub — {{ stub.pay_date.strftime('%b %d, %Y') }} — Tax Estimator{% endblock %}
+
+{% macro money_field(label, name, value) %}
+<div class="col-sm-6 col-md-4 mb-3">
+  <label class="form-label">{{ label }}</label>
+  <div class="input-group input-group-sm">
+    <span class="input-group-text">$</span>
+    <input type="number" step="0.01" min="0" name="{{ name }}" class="form-control"
+           value="{{ '%.2f'|format(value|float) }}">
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h1 class="h4 mb-0">{{ employer.name }}</h1>
+        <small class="text-muted">Pay date: {{ stub.pay_date.strftime('%B %d, %Y') }}
+          {% if stub.is_actual %}<span class="badge bg-success ms-2">Actual</span>
+          {% else %}<span class="badge bg-light text-secondary border ms-2">Estimated</span>{% endif %}
+        </small>
+      </div>
+      <a href="{{ url_for('w2.paystub_list', employer_id=employer.id) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+      </a>
+    </div>
+
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Income</div>
+        <div class="card-body row">
+          {{ money_field("Gross Pay", "gross_pay", stub.gross_pay) }}
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Tax Withholding</div>
+        <div class="card-body row">
+          {{ money_field("Federal Income Tax", "federal_income_withholding", stub.federal_income_withholding) }}
+          {{ money_field("Social Security", "ss_withholding", stub.ss_withholding) }}
+          {{ money_field("Medicare", "medicare_withholding", stub.medicare_withholding) }}
+          {{ money_field("CA State Income Tax", "state_income_withholding", stub.state_income_withholding) }}
+          {{ money_field("CA SDI", "state_disability_withholding", stub.state_disability_withholding) }}
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Pre-Tax Benefits</div>
+        <div class="card-body row">
+          {{ money_field("Medical Insurance", "medical_insurance", stub.medical_insurance) }}
+          {{ money_field("Dental Insurance", "dental_insurance", stub.dental_insurance) }}
+          {{ money_field("Vision Insurance", "vision_insurance", stub.vision_insurance) }}
+          {{ money_field("401(k) Pre-Tax", "pretax_401k", stub.pretax_401k) }}
+          {{ money_field("Roth 401(k)", "roth_401k", stub.roth_401k) }}
+          {{ money_field("Dependent Care FSA", "dependent_care_fsa", stub.dependent_care_fsa) }}
+          {{ money_field("Healthcare FSA", "healthcare_fsa", stub.healthcare_fsa) }}
+        </div>
+      </div>
+
+      {% if custom_defs %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Other</div>
+        <div class="card-body row">
+          {% for fd in custom_defs %}
+          {{ money_field(fd.field_name, "custom_" ~ fd.id, cf_values.get(fd.id, 0)) }}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-body row">
+          <div class="col-12 mb-3">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control form-control-sm" rows="2">{{ stub.notes or '' }}</textarea>
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="is_actual" name="is_actual" value="true"
+                     {{ 'checked' if stub.is_actual }}>
+              <label class="form-check-label" for="is_actual">
+                Mark as <strong>actual</strong>
+                <span class="text-muted small">(future estimated pay periods will copy these values)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Paystub</button>
+        <a href="{{ url_for('w2.paystub_list', employer_id=employer.id) }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
