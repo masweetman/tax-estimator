@@ -9,6 +9,8 @@ Group=www-data
 WorkingDirectory=/srv/tax-estimator
 EnvironmentFile=/srv/tax-estimator/.env
 
+ExecStartPre=/srv/tax-estimator/.venv/bin/flask --app wsgi:app db upgrade
+
 ExecStart=/srv/tax-estimator/.venv/bin/gunicorn \
     --workers 3 \
     --worker-class sync \
