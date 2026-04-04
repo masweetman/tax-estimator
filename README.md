@@ -4,7 +4,7 @@ A Flask-based federal + California income tax estimator for a family of four (MF
 Tracks W-2 income, self-employment income, investments, deductions, and estimated payments throughout
 the year. Calculates safe harbor thresholds and recommends quarterly payment amounts.
 
-**Stack:** Python 3.11+, Flask 3.x, Flask-SQLAlchemy, Flask-Login, SQLite, Bootstrap 5, gunicorn
+**Stack:** Python 3+, Flask 3.x, Flask-SQLAlchemy, Flask-Login, SQLite, Bootstrap 5, gunicorn
 
 ---
 
@@ -92,7 +92,7 @@ Target: **Ubuntu 22.04 LTS**, OpenLiteSpeed, Python 3.11+, gunicorn over a Unix 
 
 ```bash
 # Python
-sudo apt update && sudo apt install -y python3.11 python3.11-venv python3-pip
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip
 
 # OpenLiteSpeed (if not already installed)
 wget -O - https://repo.litespeed.sh | sudo bash
@@ -129,7 +129,7 @@ sudo chown -R www-data:www-data /srv/tax-estimator
 sudo chmod 750 /srv/tax-estimator
 
 # Create the virtual environment as www-data
-sudo -u www-data python3.11 -m venv /srv/tax-estimator/.venv
+sudo -u www-data python3 -m venv /srv/tax-estimator/.venv
 sudo -u www-data /srv/tax-estimator/.venv/bin/pip install -r /srv/tax-estimator/requirements.txt
 
 # Create the instance directory (SQLite database lives here)
