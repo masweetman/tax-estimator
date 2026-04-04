@@ -34,31 +34,11 @@ FLASK_ENV=development
 SECRET_KEY=dev-secret-change-me
 ```
 
-### 3. Initialise the database
+### 3. Run the dev server
 
-```bash
-mkdir -p instance
-```
-```bash
-python -c "from app import create_app, db; app=create_app('development'); app.app_context().push(); db.create_all(); print('Database initialised')"
-```
+On first startup the app automatically creates the database and a default user
+(`mike`, password `change-me-now`). Change the password after first login.
 
-### 4. Create a user and run the dev server
-
-```bash
-python3 - <<'EOF'
-from app import create_app, db
-from app.models import User
-from werkzeug.security import generate_password_hash
-app = create_app("development")
-with app.app_context():
-    db.create_all()
-    u = User(username="mike", password_hash=generate_password_hash("dev-password"))
-    db.session.add(u)
-    db.session.commit()
-    print("User created")
-EOF
-```
 ```bash
 flask --app wsgi:app run --debug
 ```
@@ -168,33 +148,8 @@ EOF
 sudo chmod 600 /srv/tax-estimator/.env
 ```
 
-Initialise the database:
-
-```bash
-sudo -u www-data /srv/tax-estimator/.venv/bin/python3 - <<'EOF'
-from app import create_app, db
-app = create_app("production")
-with app.app_context():
-    db.create_all()
-    print("Database initialised")
-EOF
-```
-
-Create the first user:
-
-```bash
-sudo -u www-data /srv/tax-estimator/.venv/bin/python3 - <<'EOF'
-from app import create_app, db
-from app.models import User
-from werkzeug.security import generate_password_hash
-app = create_app("production")
-with app.app_context():
-    u = User(username="mike", password_hash=generate_password_hash("change-me-now"))
-    db.session.add(u)
-    db.session.commit()
-    print("User created — change the password after first login")
-EOF
-```
+The database and default user (`mike`, password `change-me-now`) are created
+automatically on first startup. Change the password after first login.
 
 ---
 

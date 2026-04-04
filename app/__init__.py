@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -84,5 +86,20 @@ def create_app(config_name="default"):
             all_years = []
             active_year = None
         return dict(nav_all_years=all_years, nav_active_year=active_year)
+
+    # Auto-initialise the database and seed the default user on first boot.
+    with app.app_context():
+        os.makedirs(app.instance_path, exist_ok=True)
+        db.create_all()
+        if not app.testing:
+            from app.models import User
+            from werkzeug.security import generate_password_hash
+            if not User.query.filter_by(username="mike").first():
+                default_user = User(
+                    username="mike",
+                    password_hash=generate_password_hash("change-me-now"),
+                )
+                db.session.add(default_user)
+                db.session.commit()
 
     return app

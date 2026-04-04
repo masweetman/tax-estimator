@@ -1,0 +1,37 @@
+[Unit]
+Description=Tax Estimator — Gunicorn WSGI server
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/tax-estimator
+EnvironmentFile=/srv/tax-estimator/.env
+
+ExecStart=/srv/tax-estimator/.venv/bin/gunicorn \
+    --workers 3 \
+    --worker-class sync \
+    --bind unix:/run/tax-estimator/gunicorn.sock \
+    --umask 007 \
+    --access-logfile /var/log/tax-estimator/access.log \
+    --error-logfile /var/log/tax-estimator/error.log \
+    --capture-output \
+    wsgi:app
+
+RuntimeDirectory=tax-estimator
+RuntimeDirectoryMode=0750
+LogsDirectory=tax-estimator
+LogsDirectoryMode=0750
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/tax-estimator/instance /var/log/tax-estimator
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

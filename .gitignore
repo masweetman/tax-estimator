@@ -51,7 +51,6 @@ ehthumbs.db
 .coverage
 
 # Deployment files (server-specific config, not for version control)
-deploy/
 htmlcov/
 coverage.xml
 *.cover
