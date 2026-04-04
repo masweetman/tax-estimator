@@ -94,12 +94,16 @@ def create_app(config_name="default"):
         if not app.testing:
             from app.models import User
             from werkzeug.security import generate_password_hash
+            from sqlalchemy.exc import IntegrityError
             if not User.query.filter_by(username="mike").first():
-                default_user = User(
-                    username="mike",
-                    password_hash=generate_password_hash("change-me-now"),
-                )
-                db.session.add(default_user)
-                db.session.commit()
+                try:
+                    default_user = User(
+                        username="mike",
+                        password_hash=generate_password_hash("change-me-now"),
+                    )
+                    db.session.add(default_user)
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
 
     return app

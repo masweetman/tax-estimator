@@ -12,6 +12,7 @@ EnvironmentFile=/srv/tax-estimator/.env
 ExecStart=/srv/tax-estimator/.venv/bin/gunicorn \
     --workers 3 \
     --worker-class sync \
+    --preload \
     --bind unix:/run/tax-estimator/gunicorn.sock \
     --pid /run/tax-estimator/gunicorn.pid \
     --umask 007 \
