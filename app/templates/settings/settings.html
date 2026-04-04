@@ -190,6 +190,20 @@
 
     </form>
 
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold"><i class="bi bi-cloud-download me-2"></i>App Management</div>
+      <div class="card-body">
+        <p class="mb-3 text-muted small">Pulls the latest code from the git remote and gracefully restarts workers.</p>
+        <form method="post" action="{{ url_for('settings.git_pull') }}" onsubmit="return confirm('Pull latest code and restart workers?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="year" value="{{ tax_year.year }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-arrow-repeat me-1"></i>Pull latest &amp; reload
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div class="card border-danger mb-5">
       <div class="card-header text-danger fw-semibold"><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</div>
       <div class="card-body">

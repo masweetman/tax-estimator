@@ -13,6 +13,7 @@ ExecStart=/srv/tax-estimator/.venv/bin/gunicorn \
     --workers 3 \
     --worker-class sync \
     --bind unix:/run/tax-estimator/gunicorn.sock \
+    --pid /run/tax-estimator/gunicorn.pid \
     --umask 007 \
     --access-logfile /var/log/tax-estimator/access.log \
     --error-logfile /var/log/tax-estimator/error.log \
@@ -28,7 +29,7 @@ LogsDirectoryMode=0750
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
-ReadWritePaths=/srv/tax-estimator/instance /var/log/tax-estimator
+ReadWritePaths=/srv/tax-estimator /var/log/tax-estimator
 
 Restart=on-failure
 RestartSec=5

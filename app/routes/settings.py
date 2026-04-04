@@ -1,6 +1,10 @@
 """Per-year tax rate settings route."""
 import json
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+import os
+import signal
+import subprocess
+import threading
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required
 
 from app import db
@@ -65,6 +69,49 @@ def _parse_float(val, default=None):
         return float(str(val).strip())
     except ValueError:
         return default
+
+
+def _reload_gunicorn():
+    """Send SIGHUP to the gunicorn master process to trigger a graceful reload.
+
+    No-op when the PID file is absent (e.g. dev server).
+    """
+    pid_file = "/run/tax-estimator/gunicorn.pid"
+    try:
+        with open(pid_file) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, signal.SIGHUP)
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        pass
+
+
+@settings_bp.route("/git-pull", methods=["POST"])
+@login_required
+def git_pull():
+    year = request.form.get("year", type=int)
+    repo_root = os.path.dirname(current_app.root_path)
+    try:
+        result = subprocess.run(
+            ["git", "pull"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        output = (result.stdout + result.stderr).strip()
+        if result.returncode == 0:
+            flash(f"git pull succeeded:\n{output}", "success")
+            threading.Timer(1.0, _reload_gunicorn).start()
+        else:
+            flash(f"git pull failed (exit {result.returncode}):\n{output}", "danger")
+    except subprocess.TimeoutExpired:
+        flash("git pull timed out after 30 seconds.", "danger")
+    except FileNotFoundError:
+        flash("git not found on PATH.", "danger")
+
+    if year:
+        return redirect(url_for("settings.settings_page", year=year))
+    return redirect(url_for("dashboard.index"))
 
 
 @settings_bp.route("/<int:year>", methods=["GET", "POST"])
