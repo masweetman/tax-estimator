@@ -1,0 +1,37 @@
+PROMPT INSTRUCTIONS: 2025 QBI (SECTION 199A) CALCULATOR
+-------------------------------------------------------
+CONTEXT: 
+Calculate the Federal Qualified Business Income (QBI) deduction for the 2025 Tax Year. 
+Incorporate updates from the One Big Beautiful Bill Act (OBBBA).
+
+INPUT DATA REQUIRED:
+1. Filing Status (Single, MFJ, MFS, HoH)
+2. Total Taxable Income (TI) - Before QBI deduction and net capital gains.
+3. Qualified Business Income (QBI) - Net pass-through income.
+4. W-2 Wages paid by the business.
+5. UBIA (Unadjusted Basis Immediately after Acquisition) of qualified property.
+6. Business Type: SSTB (Specified Service Trade or Business) or Non-SSTB.
+7. Net Capital Gains (including qualified dividends).
+
+LOGIC & THRESHOLDS (2025):
+- MFJ Thresholds: $394,600 (Lower) | $494,600 (Upper) | $100,000 (Phase-in range)
+- Single/Other Thresholds: $197,300 (Lower) | $247,300 (Upper) | $50,000 (Phase-in range)
+
+CALCULATION STEPS:
+
+STEP 1: INITIAL CALCULATION
+- Tentative Deduction = 20% * QBI.
+
+STEP 2: TEST INCOME AGAINST THRESHOLDS
+- IF TI <= Lower Threshold: 
+    Final Deduction = Tentative Deduction (No wage/SSTB limits apply).
+- IF TI > Upper Threshold:
+    A. If SSTB: Deduction = $0.
+    B. If Non-SSTB: Deduction = Greater of:
+       i. 50% * W-2 Wages
+       ii. (25% * W-2 Wages) + (2.5% * UBIA)
+- IF TI is between Lower and Upper Thresholds (Phase-in):
+    Calculate Phase-in Percentage = (TI - Lower Threshold) / Phase-in Range.
+    A. If SSTB: Reduce QBI, Wages, and UBIA by the phase-in percentage before 
+       calculating the deduction.
+    B. If Non-SSTB:

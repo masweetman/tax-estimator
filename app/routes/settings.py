@@ -19,6 +19,8 @@ from app.calculator.constants import (
     NIIT_RATE, NIIT_THRESHOLD_MFJ,
     ADDITIONAL_MEDICARE_RATE, ADDITIONAL_MEDICARE_THRESHOLD_MFJ,
     SALT_CAP, IRS_MILEAGE_RATE,
+    SOLO_401K_EMPLOYEE_LIMIT, SOLO_401K_TOTAL_LIMIT,
+    QBI_THRESHOLD_MFJ,
     CA_STANDARD_DEDUCTION_MFJ,
     CA_BRACKETS_MFJ,
     CA_SDI_RATE,
@@ -48,6 +50,9 @@ def _get_defaults(year):
         "additional_medicare_rate": ADDITIONAL_MEDICARE_RATE,
         "additional_medicare_threshold": ADDITIONAL_MEDICARE_THRESHOLD_MFJ,
         "irs_mileage_rate": IRS_MILEAGE_RATE.get(y, IRS_MILEAGE_RATE[2025]),
+        "solo_401k_employee_limit": SOLO_401K_EMPLOYEE_LIMIT.get(y, SOLO_401K_EMPLOYEE_LIMIT[2025]),
+        "solo_401k_total_limit": SOLO_401K_TOTAL_LIMIT.get(y, SOLO_401K_TOTAL_LIMIT[2025]),
+        "qbi_threshold": QBI_THRESHOLD_MFJ.get(y, QBI_THRESHOLD_MFJ[2025]),
         "ca_standard_deduction": CA_STANDARD_DEDUCTION_MFJ.get(y, CA_STANDARD_DEDUCTION_MFJ[2025]),
         "ca_sdi_rate": CA_SDI_RATE.get(y, CA_SDI_RATE[2025]),
         "ca_mental_health_surtax_rate": CA_MENTAL_HEALTH_SURTAX_RATE,
@@ -144,6 +149,9 @@ def settings_page(year):
         s.additional_medicare_rate = _parse_float(request.form.get("additional_medicare_rate"))
         s.additional_medicare_threshold = _parse_float(request.form.get("additional_medicare_threshold"))
         s.irs_mileage_rate = _parse_float(request.form.get("irs_mileage_rate"))
+        s.solo_401k_employee_limit = _parse_float(request.form.get("solo_401k_employee_limit"))
+        s.solo_401k_total_limit = _parse_float(request.form.get("solo_401k_total_limit"))
+        s.qbi_threshold = _parse_float(request.form.get("qbi_threshold"))
         s.ca_standard_deduction = _parse_float(request.form.get("ca_standard_deduction"))
         s.ca_sdi_rate = _parse_float(request.form.get("ca_sdi_rate"))
         s.ca_mental_health_surtax_rate = _parse_float(request.form.get("ca_mental_health_surtax_rate"))

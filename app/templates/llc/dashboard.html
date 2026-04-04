@@ -14,7 +14,7 @@
     <a href="{{ url_for('llc.llc_edit', llc_id=llc.id) }}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-pencil me-1"></i>Edit LLC
     </a>
-    <a href="{{ url_for('llc.llc_list', year=tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
+    <a href="{{ url_for('se.income_list', year=tax_year.year) }}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-arrow-left me-1"></i>Back
     </a>
   </div>
@@ -267,27 +267,6 @@
   <a href="{{ url_for('llc.home_office', llc_id=llc.id) }}">Set up home office deduction.</a>
 </p>
 {% endif %}
-
-{# ─── P&L Summary ─── #}
-<div class="card border-dark mb-4" style="max-width:420px">
-  <div class="card-header fw-bold">Schedule C Net Profit / Loss</div>
-  <div class="card-body p-0">
-    <table class="table table-sm mb-0">
-      <tbody>
-        <tr><td>Revenue</td><td class="text-end">${{ "{:,.2f}".format(total_income) }}</td></tr>
-        <tr><td>Direct Expenses</td><td class="text-end text-danger">−${{ "{:,.2f}".format(total_expenses) }}</td></tr>
-        <tr><td>Mileage Deduction</td><td class="text-end text-danger">−${{ "{:,.2f}".format(mileage_deduction) }}</td></tr>
-        {% if ho_business_total > 0 %}
-        <tr><td>Home Office Deduction</td><td class="text-end text-danger">−${{ "{:,.2f}".format(ho_business_total) }}</td></tr>
-        {% endif %}
-        <tr class="table-{{ 'success' if net_profit >= 0 else 'danger' }} fw-bold">
-          <td>Net {{ 'Profit' if net_profit >= 0 else 'Loss' }}</td>
-          <td class="text-end">${{ "{:,.2f}".format(net_profit) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
 
 <div class="d-flex gap-2">
   <a href="{{ url_for('se.income_add', year=tax_year.year) }}" class="btn btn-outline-primary btn-sm">

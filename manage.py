@@ -35,6 +35,9 @@ def _seed_tax_years(db):
             "additional_medicare_rate": 0.009,
             "additional_medicare_threshold": 250_000,
             "irs_mileage_rate": 0.70,
+            "solo_401k_employee_limit": 23_500,
+            "solo_401k_total_limit": 70_000,
+            "qbi_threshold": 394_600,
             # California scalars
             "ca_standard_deduction": 11_412,
             "ca_sdi_rate": 0.012,
@@ -82,6 +85,9 @@ def _seed_tax_years(db):
             "additional_medicare_rate": 0.009,
             "additional_medicare_threshold": 250_000,
             "irs_mileage_rate": 0.725,
+            "solo_401k_employee_limit": 24_000,
+            "solo_401k_total_limit": 71_000,
+            "qbi_threshold": 404_100,
             # California scalars
             "ca_standard_deduction": 11_720,
             "ca_sdi_rate": 0.013,
@@ -305,6 +311,34 @@ def cmd_migrate_unemployment():
         print("unemployment_compensation table ensured.")
 
 
+def cmd_migrate_settings_limits():
+    """Add solo_401k_employee_limit, solo_401k_total_limit, and qbi_threshold columns
+    to tax_year_settings table (idempotent)."""
+    app = get_app()
+    with app.app_context():
+        from app import db
+        new_cols = [
+            ("solo_401k_employee_limit", "NUMERIC(10,2)"),
+            ("solo_401k_total_limit",    "NUMERIC(10,2)"),
+            ("qbi_threshold",            "NUMERIC(12,2)"),
+        ]
+        added = []
+        with db.engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(tax_year_settings)"))
+            existing = {row[1] for row in result}
+            for col, typedef in new_cols:
+                if col not in existing:
+                    conn.execute(text(
+                        f"ALTER TABLE tax_year_settings ADD COLUMN {col} {typedef}"
+                    ))
+                    added.append(col)
+            conn.commit()
+        if added:
+            print(f"Added columns: {', '.join(added)}")
+        else:
+            print("No schema changes needed — database already up to date.")
+
+
 def cmd_seed_tax_years():
     """Seed default TaxYear and TaxYearSettings for 2025 and 2026 (idempotent)."""
     app = get_app()
@@ -323,6 +357,7 @@ COMMANDS = {
     "migrate-investment-income": cmd_migrate_investment_income,
     "migrate-sstb": cmd_migrate_sstb,
     "migrate-unemployment": cmd_migrate_unemployment,
+    "migrate-settings-limits": cmd_migrate_settings_limits,
     "seed-tax-years": cmd_seed_tax_years,
 }
 

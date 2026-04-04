@@ -116,6 +116,9 @@
           {{ scalar_field("Add'l Medicare Rate", "additional_medicare_rate", defaults.additional_medicare_rate, pct=true) }}
           {{ scalar_field("Add'l Medicare Threshold", "additional_medicare_threshold", defaults.additional_medicare_threshold) }}
           {{ scalar_field("IRS Mileage Rate ($/mile)", "irs_mileage_rate", defaults.irs_mileage_rate, pct=true, help="e.g. 0.70") }}
+          {{ scalar_field("Solo 401(k) Employee Deferral Limit", "solo_401k_employee_limit", defaults.solo_401k_employee_limit) }}
+          {{ scalar_field("Solo 401(k) Total Limit (§415c)", "solo_401k_total_limit", defaults.solo_401k_total_limit) }}
+          {{ scalar_field("QBI Deduction Threshold (MFJ)", "qbi_threshold", defaults.qbi_threshold) }}
         </div>
       </div>
 

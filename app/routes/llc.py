@@ -22,17 +22,6 @@ def _get_llc_or_404(llc_id):
 
 
 # ---------------------------------------------------------------------------
-# LLC List
-# ---------------------------------------------------------------------------
-
-@llc_bp.route("/<int:year>/")
-@login_required
-def llc_list(year):
-    ty = _get_year_or_404(year)
-    return render_template("llc/list.html", tax_year=ty, llcs=ty.llcs)
-
-
-# ---------------------------------------------------------------------------
 # LLC Add / Edit
 # ---------------------------------------------------------------------------
 
@@ -60,7 +49,7 @@ def llc_add(year):
         db.session.add(llc)
         db.session.commit()
         flash(f"LLC '{llc.name}' added.", "success")
-        return redirect(url_for("llc.llc_list", year=year))
+        return redirect(url_for("se.income_list", year=year))
     return render_template("llc/form.html", tax_year=ty, record=None)
 
 
@@ -85,7 +74,7 @@ def llc_edit(llc_id):
         llc.sstb = "sstb" in request.form
         db.session.commit()
         flash("LLC updated.", "success")
-        return redirect(url_for("llc.llc_list", year=year))
+        return redirect(url_for("se.income_list", year=year))
     return render_template("llc/form.html", tax_year=llc.tax_year, record=llc)
 
 
@@ -98,7 +87,7 @@ def llc_delete(llc_id):
     db.session.delete(llc)
     db.session.commit()
     flash(f"LLC '{name}' deleted.", "info")
-    return redirect(url_for("llc.llc_list", year=year))
+    return redirect(url_for("se.income_list", year=year))
 
 
 # ---------------------------------------------------------------------------

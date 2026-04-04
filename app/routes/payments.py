@@ -10,6 +10,7 @@ from app.models import (
 )
 from app.calculator.federal import calculate_solo_401k_max
 from app.calculator.constants import IRS_MILEAGE_RATE
+from app.tax_settings import get_settings_inputs
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -112,6 +113,7 @@ def retirement_list(year):
     # Build Solo 401(k) max-contribution data for each LLC with SE income
     llcs = SingleMemberLLC.query.filter_by(tax_year_id=ty.id).order_by(SingleMemberLLC.person).all()
     mileage_rate = IRS_MILEAGE_RATE.get(year, IRS_MILEAGE_RATE[2025])
+    settings_overrides = get_settings_inputs(ty)
     solo_401k_calcs = []
     for llc in llcs:
         gross_income = sum(float(r.amount) for r in llc.income)
@@ -121,7 +123,12 @@ def retirement_list(year):
         )
         net_profit = max(0.0, gross_income - expenses - mileage_deduction)
         if net_profit > 0:
-            calc = calculate_solo_401k_max(net_profit, year)
+            calc = calculate_solo_401k_max(
+                net_profit,
+                year,
+                employee_limit_override=settings_overrides.get("solo_401k_employee_limit"),
+                total_limit_override=settings_overrides.get("solo_401k_total_limit"),
+            )
             calc["llc_name"] = llc.name
             calc["llc_id"] = llc.id
             solo_401k_calcs.append(calc)

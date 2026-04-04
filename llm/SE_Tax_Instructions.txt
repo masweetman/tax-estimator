@@ -1,0 +1,45 @@
+PROMPT INSTRUCTIONS: 2025 SELF-EMPLOYMENT (SE) TAX CALCULATOR
+-------------------------------------------------------
+TASK: Calculate the Federal Self-Employment Tax for the 2025 Tax Year.
+
+REQUIRED INPUTS:
+1. Net Business Profit: (From Schedule C or K-1)
+2. Other W-2 Wages: (Received by the individual, used to offset the SS cap)
+3. Combined Household Income: (If MFJ, used for Additional Medicare Tax threshold)
+4. Filing Status: (Single, MFJ, MFS, or HoH)
+
+2025 CONSTANTS & LIMITS:
+- Social Security Wage Base: $176,100
+- Social Security Tax Rate: 12.4%
+- Medicare Tax Rate: 2.9%
+- Combined SE Tax Rate: 15.3%
+- Net Earnings Multiplier: 0.9235 (92.35%)
+- Addl. Medicare Tax Thresholds: $250,000 (MFJ) | $200,000 (Single/HoH)
+- Addl. Medicare Tax Rate: 0.9%
+
+CALCULATION LOGIC:
+
+STEP 1: CALCULATE ADJUSTED NET EARNINGS
+- Adjusted Earnings = Net Business Profit * 0.9235.
+
+STEP 2: SOCIAL SECURITY (OASDI) PORTION
+- Calculate Remaining SS Wage Base = $176,100 - (Other W-2 Wages).
+- If result is < 0, set to $0.
+- SS Tax = 12.4% * (Lesser of Adjusted Earnings OR Remaining Wage Base).
+
+STEP 3: MEDICARE (HI) PORTION
+- Medicare Tax = 2.9% * Adjusted Earnings (No income cap).
+
+STEP 4: ADDITIONAL MEDICARE TAX
+- Calculate Excess Income = (Combined Household Income) - (Applicable Threshold).
+- If Excess > 0, Addl. Medicare Tax = 0.9% * (Lesser of Adjusted Earnings OR Excess).
+
+STEP 5: TOTALS
+- Total SE Tax = SS Tax + Medicare Tax + Addl. Medicare Tax.
+- Deductible Portion = 50% of (SS Tax + Medicare Tax). 
+  *Note: Addl. Medicare Tax is not deductible.
+
+OUTPUT:
+- Show SS Tax, Medicare Tax, Addl. Medicare Tax, Total SE Tax, and 
+  the 'Above-the-Line' Deduction for Form 1040.
+-------------------------------------------------------

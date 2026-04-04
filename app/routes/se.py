@@ -4,7 +4,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required
 
 from app import db
-from app.models import SelfEmploymentIncome, SelfEmploymentExpense, TaxYear, SingleMemberLLC, SE_INCOME_CATEGORIES, SE_EXPENSE_CATEGORIES
+from app.models import SelfEmploymentIncome, SelfEmploymentExpense, TaxYear, SingleMemberLLC, SE_INCOME_CATEGORIES, SE_EXPENSE_CATEGORIES, HOME_OFFICE_DEDUCTION_TYPES
+from app.calculator.constants import IRS_MILEAGE_RATE
 
 
 def _get_llcs(ty):
@@ -27,8 +28,40 @@ def income_list(year):
     ty = _get_year_or_404(year)
     records = SelfEmploymentIncome.query.filter_by(tax_year_id=ty.id).order_by(SelfEmploymentIncome.date).all()
     total = sum(float(r.amount) for r in records)
+    llcs = _get_llcs(ty)
+    mileage_rate = IRS_MILEAGE_RATE.get(ty.year, IRS_MILEAGE_RATE.get(2025, 0.70))
+    llc_summaries = []
+    for llc in llcs:
+        revenue = sum(float(r.amount) for r in llc.income)
+        pl_income = sum(
+            float(q.income or 0) + float(q.other_income or 0)
+            for q in llc.quarterly_pl
+        )
+        pl_deductions = sum(
+            float(q.cogs or 0) + float(q.expenses or 0)
+            for q in llc.quarterly_pl
+        )
+        total_revenue = revenue + pl_income
+        direct_expenses = sum(float(r.amount) for r in llc.expenses)
+        total_miles = sum(float(r.business_miles) for r in llc.mileage)
+        mileage_deduction = round(total_miles * mileage_rate, 2)
+        home_office_total = 0.0
+        if llc.home_office:
+            for field, _ in HOME_OFFICE_DEDUCTION_TYPES:
+                val = getattr(llc.home_office, field)
+                if val is not None:
+                    home_office_total += llc.home_office.business_amount(field)
+        net_profit = total_revenue - direct_expenses - pl_deductions - mileage_deduction - home_office_total
+        llc_summaries.append({
+            "llc": llc,
+            "revenue": total_revenue,
+            "mileage_deduction": mileage_deduction,
+            "home_office_total": home_office_total,
+            "net_profit": net_profit,
+        })
     return render_template("se/income_list.html", tax_year=ty, records=records, total=total,
-                           categories=SE_INCOME_CATEGORIES, llcs=_get_llcs(ty))
+                           categories=SE_INCOME_CATEGORIES, llcs=llcs,
+                           llc_summaries=llc_summaries)
 
 
 @se_bp.route("/<int:year>/income/add", methods=["GET", "POST"])

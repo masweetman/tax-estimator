@@ -21,6 +21,8 @@ from .constants import (
     CDCC_MIN_RATE,
     CDCC_MAX_RATE,
     CDCC_PHASE_DOWN_START,
+    CDCC_PHASE_DOWN_STEP,
+    MEDICAL_EXPENSE_FLOOR,
     SALT_CAP,
     SALT_PHASE_DOWN_START,
     SALT_FLOOR,
@@ -66,7 +68,7 @@ def _marginal_rate(income, brackets):
     return brackets[-1][0]
 
 
-def calculate_solo_401k_max(net_profit, year):
+def calculate_solo_401k_max(net_profit, year, employee_limit_override=None, total_limit_override=None):
     """Compute the maximum Solo 401(k) contribution for a Schedule C / SMLLC owner.
 
     Follows Solo_401k_Instructions.txt exactly:
@@ -88,8 +90,8 @@ def calculate_solo_401k_max(net_profit, year):
     year = int(year)
     net_profit = max(0.0, float(net_profit))
 
-    employee_limit = SOLO_401K_EMPLOYEE_LIMIT.get(year, SOLO_401K_EMPLOYEE_LIMIT[2025])
-    total_limit = SOLO_401K_TOTAL_LIMIT.get(year, SOLO_401K_TOTAL_LIMIT[2025])
+    employee_limit = employee_limit_override or SOLO_401K_EMPLOYEE_LIMIT.get(year, SOLO_401K_EMPLOYEE_LIMIT[2025])
+    total_limit = total_limit_override or SOLO_401K_TOTAL_LIMIT.get(year, SOLO_401K_TOTAL_LIMIT[2025])
 
     net_se_earnings = net_profit * SE_NET_EARNINGS_FACTOR          # * 0.9235
     se_tax = net_se_earnings * 0.153                                # both halves
@@ -170,8 +172,8 @@ def calculate_se(inputs):
         ne = se_net * SE_NET_EARNINGS_FACTOR
         ss_room = max(0.0, ss_base - w2_for_person)
         ss_subject = min(ne, ss_room)
-        ss_tax = ss_subject * 0.124  # both employee + employer halves
-        medicare_tax = ne * 0.029    # both halves
+        ss_tax = ss_subject * (SS_EMPLOYEE_RATE * 2)      # both employee + employer halves
+        medicare_tax = ne * (MEDICARE_EMPLOYEE_RATE * 2)    # both halves
         return ss_tax + medicare_tax
 
     # Use actual per-person W-2 wages to correctly offset each person's SS wage base.
@@ -243,7 +245,7 @@ def calculate_federal(inputs):
     mortgage_interest = float(inputs.get("mortgage_interest", 0))
     charitable = float(inputs.get("charitable", 0))
     salt_paid = float(inputs.get("salt_taxes_paid", 0))
-    medical = max(0.0, float(inputs.get("medical_expenses", 0)) - federal_agi * 0.075)
+    medical = max(0.0, float(inputs.get("medical_expenses", 0)) - federal_agi * MEDICAL_EXPENSE_FLOOR)
     # SDI and CA state income tax are deductible as state taxes (subject to SALT cap)
     ca_sdi = float(inputs.get("ca_sdi_withheld", 0))
     ca_state_income = float(inputs.get("ca_income_withheld", 0))
@@ -315,7 +317,7 @@ def calculate_federal(inputs):
     if federal_agi <= CDCC_PHASE_DOWN_START:
         care_rate = CDCC_MAX_RATE
     else:
-        reduction_units = min(28, int((federal_agi - CDCC_PHASE_DOWN_START) / 2_000))
+        reduction_units = min(28, int((federal_agi - CDCC_PHASE_DOWN_START) / CDCC_PHASE_DOWN_STEP))
         care_rate = max(CDCC_MIN_RATE, CDCC_MAX_RATE - reduction_units * 0.01)
     child_care_credit = round(eligible_care_exp * care_rate, 2)
 

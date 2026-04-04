@@ -48,6 +48,9 @@ def get_settings_inputs(ty) -> dict:
     _add("additional_medicare_rate", s.additional_medicare_rate)
     _add("additional_medicare_threshold", s.additional_medicare_threshold)
     _add("irs_mileage_rate", s.irs_mileage_rate)
+    _add("solo_401k_employee_limit", s.solo_401k_employee_limit)
+    _add("solo_401k_total_limit", s.solo_401k_total_limit)
+    _add("qbi_threshold", s.qbi_threshold)
 
     # CA scalars
     _add("ca_standard_deduction", s.ca_standard_deduction)

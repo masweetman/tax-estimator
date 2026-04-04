@@ -7,6 +7,7 @@ from .constants import (
     CA_PERSONAL_EXEMPTION_MFJ,
     CA_DEPENDENT_CREDIT,
     CA_YOUNG_CHILD_TAX_CREDIT,
+    MEDICAL_EXPENSE_FLOOR,
 )
 
 
@@ -60,7 +61,7 @@ def calculate_california(inputs, federal_result):
     charitable = float(inputs.get("charitable", 0))
     # CA allows full state/local tax deduction (not capped) BUT SDI not deductible
     salt_paid = float(inputs.get("salt_taxes_paid", 0))  # property tax + other state taxes
-    medical_agi_floor = ca_agi * 0.075
+    medical_agi_floor = ca_agi * MEDICAL_EXPENSE_FLOOR
     medical = max(0.0, float(inputs.get("medical_expenses", 0)) - medical_agi_floor)
 
     ca_itemized = mortgage_interest + charitable + salt_paid + medical

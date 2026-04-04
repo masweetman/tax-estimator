@@ -113,6 +113,10 @@ CDCC_MAX_EXPENSES_2_PLUS = 6_000
 CDCC_MIN_RATE = 0.20
 CDCC_MAX_RATE = 0.35
 CDCC_PHASE_DOWN_START = 15_000   # AGI above which rate phases from 35% down to 20%
+CDCC_PHASE_DOWN_STEP = 2_000     # AGI increment per 1-percentage-point rate reduction
+
+# Medical expense AGI floor (federal §213 and CA equivalent)
+MEDICAL_EXPENSE_FLOOR = 0.075
 
 # ---------------------------------------------------------------------------
 # SALT cap  {year: amount}  (OBBBA raised 2026 cap to $40,400 with phase-down)

@@ -434,6 +434,9 @@ class TaxYearSettings(db.Model):
     additional_medicare_rate = db.Column(db.Numeric(8, 6), nullable=True)
     additional_medicare_threshold = db.Column(db.Numeric(12, 2), nullable=True)
     irs_mileage_rate = db.Column(db.Numeric(8, 4), nullable=True)
+    solo_401k_employee_limit = db.Column(db.Numeric(10, 2), nullable=True)
+    solo_401k_total_limit = db.Column(db.Numeric(10, 2), nullable=True)
+    qbi_threshold = db.Column(db.Numeric(12, 2), nullable=True)
 
     # California scalars
     ca_standard_deduction = db.Column(db.Numeric(12, 2), nullable=True)
