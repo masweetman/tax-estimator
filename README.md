@@ -4,7 +4,7 @@ A Flask-based federal + California income tax estimator for a family of four (MF
 Tracks W-2 income, self-employment income, investments, deductions, and estimated payments throughout
 the year. Calculates safe harbor thresholds and recommends quarterly payment amounts.
 
-**Stack:** Python 3+, Flask 3.x, Flask-SQLAlchemy, Flask-Login, SQLite, Bootstrap 5, gunicorn
+**Stack:** Python 3+, Flask 3.x, Flask-SQLAlchemy, Flask-Migrate, Flask-Login, SQLite, Bootstrap 5, gunicorn
 
 ---
 
@@ -47,6 +47,38 @@ App is available at `http://127.0.0.1:5000`.
 
 ---
 
+## Database migrations
+
+This project uses [Flask-Migrate](https://flask-migrate.readthedocs.io/) (Alembic) to manage schema changes.
+
+### After changing `models.py`
+
+```bash
+# Generate a migration file
+flask --app wsgi:app db migrate -m "describe the change"
+
+# Review the generated file in migrations/versions/
+# Then apply it locally
+flask --app wsgi:app db upgrade
+
+# Commit both the model change and the migration file
+git add app/models.py migrations/versions/
+git commit -m "describe the change"
+```
+
+On production, `flask db upgrade` runs automatically via `ExecStartPre` in the systemd service
+before gunicorn starts — so a `git pull` + `systemctl restart` is all that's needed to deploy
+schema changes.
+
+### Checking migration status
+
+```bash
+flask --app wsgi:app db current   # current revision of the DB
+flask --app wsgi:app db history   # full migration history
+```
+
+---
+
 ## Running the tests
 
 Tests use an in-memory SQLite database and pytest-flask. No server needs to be running.
@@ -61,7 +93,6 @@ python -m pytest tests/ -v
 python -m pytest tests/test_calculator.py -v
 
 # Run with coverage
-pip install pytest-cov
 python -m pytest tests/ --cov=app --cov-report=term-missing
 ```
 
@@ -74,12 +105,14 @@ python -m pytest tests/ --cov=app --cov-report=term-missing
 | `tests/test_w2.py` | Employer + paystub CRUD routes |
 | `tests/test_data_entry.py` | SE income, deductions, payments, mileage |
 | `tests/test_calculator.py` | Federal, CA, and safe harbor calculations |
+| `tests/test_calculator_precision.py` | Precision and edge cases for tax calculations |
 | `tests/test_dashboard.py` | Dashboard route + template rendering |
+| `tests/test_integration.py` | End-to-end multi-route integration flows |
 
-All 116 tests should pass:
+All 279 tests should pass:
 
 ```
-116 passed in ~6s
+279 passed in ~8s
 ```
 
 ---
@@ -91,8 +124,8 @@ Target: **Ubuntu 22.04 LTS**, OpenLiteSpeed, Python 3.11+, gunicorn over a Unix 
 ### Prerequisites
 
 ```bash
-# Python
-sudo apt update && sudo apt install -y python3 python3-venv python3-pip
+# Python and SQLite
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip sqlite3
 
 # OpenLiteSpeed (if not already installed)
 wget -O - https://repo.litespeed.sh | sudo bash
@@ -167,6 +200,9 @@ sudo systemctl start tax-estimator
 sudo systemctl status tax-estimator
 ls -la /run/tax-estimator/gunicorn.sock
 ```
+
+The service runs `flask db upgrade` automatically before gunicorn starts (`ExecStartPre`),
+so schema migrations are applied on every restart without manual intervention.
 
 ---
 
@@ -253,9 +289,26 @@ sudo -u www-data /srv/tax-estimator/.venv/bin/pip install -r requirements.txt
 sudo systemctl restart tax-estimator
 ```
 
+The service will automatically run `flask db upgrade` before starting gunicorn,
+applying any new migrations included in the pull.
+
 ---
 
-### 7. Log locations
+### 7. Bootstrapping Flask-Migrate on an existing installation
+
+If adding Flask-Migrate to a server that was previously running without it, stamp
+the current database as the baseline before the first restart:
+
+```bash
+sudo -u www-data /srv/tax-estimator/.venv/bin/pip install -r /srv/tax-estimator/requirements.txt
+sudo -u www-data /srv/tax-estimator/.venv/bin/flask --app wsgi:app db stamp head
+sudo systemctl daemon-reload
+sudo systemctl restart tax-estimator
+```
+
+---
+
+### 8. Log locations
 
 | Log | Path |
 |-----|------|
