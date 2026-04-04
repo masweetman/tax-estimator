@@ -5,15 +5,13 @@ from flask_login import login_required
 
 from app import db
 from app.models import VehicleMileage, TaxYear, SingleMemberLLC
+from app.calculator.constants import IRS_MILEAGE_RATE
 
 
 def _get_llcs(ty):
     return SingleMemberLLC.query.filter_by(tax_year_id=ty.id).order_by(SingleMemberLLC.person).all()
 
 vehicles_bp = Blueprint("vehicles", __name__, url_prefix="/vehicles")
-
-# IRS standard mileage rate — stored in constants too, but needed here for the preview
-IRS_MILEAGE_RATE = 0.70  # 2025
 
 
 def _get_year_or_404(year):
@@ -25,13 +23,14 @@ def _get_year_or_404(year):
 def mileage_list(year):
     ty = _get_year_or_404(year)
     records = VehicleMileage.query.filter_by(tax_year_id=ty.id).order_by(VehicleMileage.date).all()
+    rate = IRS_MILEAGE_RATE.get(year, IRS_MILEAGE_RATE[2025])
     total_miles = sum(float(r.business_miles) for r in records)
-    total_deduction = round(total_miles * IRS_MILEAGE_RATE, 2)
+    total_deduction = round(total_miles * rate, 2)
     return render_template("vehicles/mileage_list.html",
                            tax_year=ty, records=records,
                            total_miles=total_miles,
                            total_deduction=total_deduction,
-                           mileage_rate=IRS_MILEAGE_RATE,
+                           mileage_rate=rate,
                            llcs=_get_llcs(ty))
 
 

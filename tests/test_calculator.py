@@ -480,3 +480,129 @@ class TestInterestAndDividends:
         # AGI should only reflect 5k in dividends (ordinary), not 10k
         base = _calc(w2_wages=100_000)
         assert result["federal_agi"] == pytest.approx(base["federal_agi"] + 5_000, abs=1)
+
+
+# ===========================================================================
+# Section 7: Excess Social Security withholding
+# ===========================================================================
+
+class TestExcessSocialSecurity:
+    """Tests for the excess SS calculation (Schedule 3, Line 11).
+
+    Two-job households (or single high earners) may over-withhold SS when
+    total wages > $176,100.  Each employer withholds independently, so the
+    excess is refundable on the federal return.
+    """
+
+    _MAX_SS = 176_100 * 0.062  # $10,918.20 for 2025
+
+    def test_no_excess_ss_when_within_wage_base(self):
+        """Withholding exactly at the cap → zero excess."""
+        result = _calc(ss_withheld_p1=self._MAX_SS, ss_withheld_p2=0)
+        assert result.get("excess_ss", 0) == pytest.approx(0.0)
+
+    def test_no_excess_ss_when_below_wage_base(self):
+        """Withholding below the cap → zero excess."""
+        result = _calc(ss_withheld_p1=5_000, ss_withheld_p2=0)
+        assert result.get("excess_ss", 0) == pytest.approx(0.0)
+
+    def test_excess_ss_single_person_over_cap(self):
+        """One person withheld beyond max → excess = withheld - max_ss."""
+        withheld = self._MAX_SS + 300.00
+        result = _calc(ss_withheld_p1=withheld, ss_withheld_p2=0)
+        assert result["excess_ss"] == pytest.approx(300.0, abs=0.01)
+
+    def test_excess_ss_two_persons_accumulates(self):
+        """Both persons over the cap → excess is the sum of both overages."""
+        result = _calc(
+            ss_withheld_p1=self._MAX_SS + 200.0,
+            ss_withheld_p2=self._MAX_SS + 150.0,
+        )
+        assert result["excess_ss"] == pytest.approx(350.0, abs=0.01)
+
+    def test_excess_ss_not_included_in_federal_total_tax(self):
+        """Excess SS is a payment/credit, not part of the tax liability itself."""
+        result_no_excess = _calc(ss_withheld_p1=0, ss_withheld_p2=0)
+        result_with_excess = _calc(
+            ss_withheld_p1=self._MAX_SS + 500.0,
+            ss_withheld_p2=0,
+        )
+        # federal_total_tax should be identical regardless of SS withholding
+        assert result_no_excess["federal_total_tax"] == pytest.approx(
+            result_with_excess["federal_total_tax"], abs=0.01
+        )
+
+
+# ===========================================================================
+# Section 8: California additions and subtractions
+# ===========================================================================
+
+class TestCAAdditionsAndSubtractions:
+    """Tests for CA-specific adjustments to federal AGI."""
+
+    def test_hsa_contributions_added_back_to_ca_agi(self):
+        """Employee HSA deduction (federal above-the-line) is added back to CA AGI.
+
+        CA does not recognise the HSA deduction, so the addback offsets the
+        federal reduction: ca_agi = federal_agi + hsa_addback.
+        """
+        result = _calc(hsa_total=8_300)
+        assert result["ca_additions_hsa_addback"] == pytest.approx(8_300, abs=1)
+        assert result["ca_agi"] == pytest.approx(
+            result["federal_agi"] + 8_300, abs=1
+        )
+
+    def test_employer_hsa_increases_ca_agi(self):
+        """Employer HSA contributions (W-2 Box 12W) are excluded from federal
+        gross income but taxable in CA (R&TC § 17215.4)."""
+        base = _calc()
+        with_employer_hsa = _calc(ca_employer_hsa_contributions=4_650)
+        assert with_employer_hsa["ca_agi"] == pytest.approx(
+            base["ca_agi"] + 4_650, abs=1
+        )
+        assert with_employer_hsa["ca_additions_employer_hsa"] == pytest.approx(4_650, abs=1)
+
+    def test_hsa_earnings_increase_ca_agi(self):
+        """HSA investment earnings are taxable in CA but not federally."""
+        base = _calc()
+        with_earnings = _calc(ca_hsa_earnings=375)
+        assert with_earnings["ca_agi"] == pytest.approx(base["ca_agi"] + 375, abs=1)
+        assert with_earnings["ca_additions_hsa_earnings"] == pytest.approx(375, abs=1)
+
+    def test_employer_hsa_does_not_affect_federal_agi(self):
+        """Employer HSA is a pre-tax W-2 exclusion — no impact on federal AGI."""
+        base = _calc()
+        with_employer_hsa = _calc(ca_employer_hsa_contributions=4_650)
+        assert with_employer_hsa["federal_agi"] == pytest.approx(base["federal_agi"], abs=1)
+
+    def test_hsa_earnings_do_not_affect_federal_agi(self):
+        """HSA earnings are not federally taxable."""
+        base = _calc()
+        with_earnings = _calc(ca_hsa_earnings=1_000)
+        assert with_earnings["federal_agi"] == pytest.approx(base["federal_agi"], abs=1)
+
+    def test_unemployment_compensation_in_federal_agi(self):
+        """Unemployment compensation is taxable federally (ARPA exclusion expired)."""
+        base = _calc(unemployment_compensation=0)
+        with_unemp = _calc(unemployment_compensation=5_000)
+        assert with_unemp["federal_agi"] == pytest.approx(
+            base["federal_agi"] + 5_000, abs=1
+        )
+
+    def test_unemployment_compensation_subtracted_from_ca_agi(self):
+        """CA does not tax unemployment compensation (R&TC § 17083)."""
+        base = _calc(unemployment_compensation=0)
+        with_unemp = _calc(unemployment_compensation=5_000)
+        # Federal AGI is 5k higher, but CA subtracts it → CA AGI unchanged
+        assert with_unemp["ca_agi"] == pytest.approx(base["ca_agi"], abs=1)
+        assert with_unemp["ca_subtractions_unemployment"] == pytest.approx(5_000, abs=1)
+
+    def test_ca_additions_total_sums_all_components(self):
+        """ca_additions_total = addback + employer_hsa + hsa_earnings."""
+        result = _calc(
+            hsa_total=8_300,
+            ca_employer_hsa_contributions=4_650,
+            ca_hsa_earnings=375,
+        )
+        expected_total = 8_300 + 4_650 + 375
+        assert result["ca_additions_total"] == pytest.approx(expected_total, abs=1)

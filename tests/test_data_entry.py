@@ -583,3 +583,39 @@ class TestMissingIds:
         _login(client, app)
         resp = client.get("/vehicles/mileage/999999/edit")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# HSA Earnings (TaxYear-level CA-only field)
+# ---------------------------------------------------------------------------
+
+class TestHSAEarnings:
+    def test_save_hsa_earnings_updates_tax_year(self, app, client):
+        _login(client, app)
+        _get_or_create_year(app)
+        resp = client.post(f"/payments/{YEAR}/hsa/earnings", data={
+            "ca_hsa_earnings": "375.00",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+        with app.app_context():
+            from app.models import TaxYear
+            ty = TaxYear.query.filter_by(year=YEAR).first()
+            assert float(ty.ca_hsa_earnings) == pytest.approx(375.0)
+
+    def test_save_hsa_earnings_zero(self, app, client):
+        _login(client, app)
+        _get_or_create_year(app)
+        resp = client.post(f"/payments/{YEAR}/hsa/earnings", data={
+            "ca_hsa_earnings": "0",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+        with app.app_context():
+            from app.models import TaxYear
+            ty = TaxYear.query.filter_by(year=YEAR).first()
+            assert float(ty.ca_hsa_earnings) == pytest.approx(0.0)
+
+    def test_save_hsa_earnings_requires_login(self, client):
+        resp = client.post(f"/payments/{YEAR}/hsa/earnings",
+                           data={"ca_hsa_earnings": "100"},
+                           follow_redirects=False)
+        assert resp.status_code == 302

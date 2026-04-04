@@ -167,3 +167,53 @@ class TestDashboard:
         _login(client, app)
         resp = client.get("/?year=1800")
         assert resp.status_code == 404
+
+
+class TestSummaryRoutes:
+    """Smoke tests for /federal-summary and /ca-summary pages."""
+
+    YEAR = 2043
+
+    def _bootstrap(self, app, client):
+        _login(client, app, username="sumuser")
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear
+            ty = TaxYear.query.filter_by(year=self.YEAR).first()
+            if not ty:
+                ty = TaxYear(
+                    year=self.YEAR,
+                    prior_year_federal_tax=20_000,
+                    prior_year_ca_tax=5_000,
+                    prior_year_agi=150_000,
+                )
+                db.session.add(ty)
+                db.session.commit()
+
+    def test_federal_summary_returns_200(self, app, client):
+        self._bootstrap(app, client)
+        resp = client.get(f"/federal-summary/{self.YEAR}/")
+        assert resp.status_code == 200
+
+    def test_ca_summary_returns_200(self, app, client):
+        self._bootstrap(app, client)
+        resp = client.get(f"/ca-summary/{self.YEAR}/")
+        assert resp.status_code == 200
+
+    def test_federal_summary_requires_login(self, client):
+        resp = client.get(f"/federal-summary/{self.YEAR}/", follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_ca_summary_requires_login(self, client):
+        resp = client.get(f"/ca-summary/{self.YEAR}/", follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_federal_summary_shows_agi(self, app, client):
+        self._bootstrap(app, client)
+        resp = client.get(f"/federal-summary/{self.YEAR}/")
+        assert b"Adjusted Gross Income" in resp.data or b"AGI" in resp.data
+
+    def test_ca_summary_shows_ca_agi(self, app, client):
+        self._bootstrap(app, client)
+        resp = client.get(f"/ca-summary/{self.YEAR}/")
+        assert b"California" in resp.data

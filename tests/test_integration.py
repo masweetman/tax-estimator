@@ -401,6 +401,116 @@ class TestBuildInputsAggregation:
         assert inputs["federal_estimated_paid"] == pytest.approx(3_000.0)
         assert inputs["ca_estimated_paid"] == pytest.approx(1_500.0)
 
+    def test_employer_hsa_aggregated_from_paystubs(self, app, client):
+        """employer_hsa_contribution on paystubs sums into ca_employer_hsa_contributions."""
+        year = 2071
+        self._setup_year(app, client, year)
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear, Employer, Paystub
+            ty = TaxYear.query.filter_by(year=year).first()
+            emp = Employer(
+                tax_year_id=ty.id, person="Person 1", name="HsaCorp",
+                first_paystub_date=datetime.date(year, 1, 4),
+            )
+            db.session.add(emp)
+            db.session.flush()
+            for i, ehsa in enumerate([387.50, 387.50], start=1):
+                db.session.add(Paystub(
+                    employer_id=emp.id,
+                    pay_period_start=datetime.date(year, i, 1),
+                    pay_period_end=datetime.date(year, i, 14),
+                    pay_date=datetime.date(year, i, 15),
+                    is_actual=True,
+                    gross_pay=5_000,
+                    employer_hsa_contribution=ehsa,
+                ))
+            db.session.commit()
+
+        inputs = _build_inputs_for_year(app, year)
+        assert inputs["ca_employer_hsa_contributions"] == pytest.approx(775.0)
+
+    def test_hsa_earnings_from_tax_year(self, app, client):
+        """ca_hsa_earnings comes from TaxYear.ca_hsa_earnings directly."""
+        year = 2072
+        self._setup_year(app, client, year)
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear
+            ty = TaxYear.query.filter_by(year=year).first()
+            ty.ca_hsa_earnings = 375.00
+            db.session.commit()
+
+        inputs = _build_inputs_for_year(app, year)
+        assert inputs["ca_hsa_earnings"] == pytest.approx(375.0)
+
+    def test_unemployment_compensation_aggregated(self, app, client):
+        """UnemploymentCompensation records sum into unemployment_compensation."""
+        year = 2073
+        self._setup_year(app, client, year)
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear, UnemploymentCompensation
+            ty = TaxYear.query.filter_by(year=year).first()
+            for amount in [2_400, 2_402]:
+                db.session.add(UnemploymentCompensation(
+                    tax_year_id=ty.id,
+                    amount=amount,
+                    payer="State EDD",
+                ))
+            db.session.commit()
+
+        inputs = _build_inputs_for_year(app, year)
+        assert inputs["unemployment_compensation"] == pytest.approx(4_802.0)
+
+    def test_hsa_contributions_aggregated(self, app, client):
+        """HSAContribution records sum into hsa_total."""
+        year = 2074
+        self._setup_year(app, client, year)
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear, HSAContribution
+            ty = TaxYear.query.filter_by(year=year).first()
+            for amount in [4_150, 4_150]:
+                db.session.add(HSAContribution(
+                    tax_year_id=ty.id, person="Person 1",
+                    amount=amount, date=datetime.date(year, 3, 1),
+                ))
+            db.session.commit()
+
+        inputs = _build_inputs_for_year(app, year)
+        assert inputs["hsa_total"] == pytest.approx(8_300.0)
+
+    def test_ss_withheld_split_by_person(self, app, client):
+        """ss_withheld_p1 and ss_withheld_p2 are tracked per employer/person."""
+        year = 2075
+        self._setup_year(app, client, year)
+        with app.app_context():
+            from app import db
+            from app.models import TaxYear, Employer, Paystub
+            ty = TaxYear.query.filter_by(year=year).first()
+            for n, person in enumerate(["Person 1", "Person 2"], start=1):
+                emp = Employer(
+                    tax_year_id=ty.id, person=person, name=f"SScorp{n}",
+                    first_paystub_date=datetime.date(year, 1, 4),
+                )
+                db.session.add(emp)
+                db.session.flush()
+                db.session.add(Paystub(
+                    employer_id=emp.id,
+                    pay_period_start=datetime.date(year, 1, 1),
+                    pay_period_end=datetime.date(year, 1, 14),
+                    pay_date=datetime.date(year, 1, 15),
+                    is_actual=True,
+                    gross_pay=10_000,
+                    ss_withholding=620 * n,  # Person 1: 620, Person 2: 1240
+                ))
+            db.session.commit()
+
+        inputs = _build_inputs_for_year(app, year)
+        assert inputs["ss_withheld_p1"] == pytest.approx(620.0)
+        assert inputs["ss_withheld_p2"] == pytest.approx(1_240.0)
+
 
 # ===========================================================================
 # Section 3: Dashboard route integration
