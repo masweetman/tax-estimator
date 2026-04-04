@@ -80,6 +80,17 @@
                      value="{{ '%.2f'|format(tax_year.taxable_state_refund|float) if tax_year.taxable_state_refund else '' }}"
                      placeholder="0.00">
             </div>
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label">CA HSA Earnings ($)
+                <span class="text-muted small" data-bs-toggle="tooltip"
+                      title="Investment earnings inside your HSA. Taxable in California.">
+                  <i class="bi bi-question-circle"></i>
+                </span>
+              </label>
+              <input type="number" step="0.01" min="0" name="ca_hsa_earnings" class="form-control form-control-sm"
+                     value="{{ '%.2f'|format(tax_year.ca_hsa_earnings|float) if tax_year.ca_hsa_earnings else '' }}"
+                     placeholder="0.00">
+            </div>
           </div>
           <button type="submit" class="btn btn-sm btn-primary">Save</button>
         </form>

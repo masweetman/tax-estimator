@@ -124,11 +124,12 @@ class TestFederalTax:
             assert key in result, f"Missing key: {key}"
 
     def test_agi_reduces_by_pretax_401k(self):
-        result_base = _calc(w2_wages=100_000, pretax_401k_total=0)
-        result_401k = _calc(w2_wages=100_000, pretax_401k_total=10_000)
-        # AGI should be lower when 401k contribution is made
-        # (pre-tax 401k reduces Box 1 wages, hence AGI)
-        assert result_401k["federal_agi"] < result_base["federal_agi"]
+        # w2_wages is Box-1 wages: pre-tax 401k is already excluded before Box-1
+        # is computed, so a higher 401k contribution means lower Box-1 wages → lower AGI.
+        result_no_401k = _calc(w2_wages=100_000, pretax_401k_total=0)
+        result_with_401k = _calc(w2_wages=90_000, pretax_401k_total=10_000)
+        # Box-1 wages differ by the 401k contribution → AGI is lower
+        assert result_with_401k["federal_agi"] < result_no_401k["federal_agi"]
 
     def test_standard_vs_itemized_uses_higher(self):
         """With large mortgage interest + charitable, itemized > standard."""
@@ -205,8 +206,8 @@ class TestFederalTax:
             charitable=0,
             salt_taxes_paid=0,
         )
-        # Taxable income ≈ 200000 - 20000 - 30000 = 150000
-        # MFJ tax on 150k: ~$22,000 +/- 20%
+        # w2_wages=200_000 is Box-1 (401k already excluded). Taxable income ≈ 200000 - 30000 = 170000
+        # MFJ tax on 170k: ~$27,000 +/- 25%
         assert 15_000 < result["federal_income_tax"] < 35_000
 
     def test_additional_medicare_tax_above_250k(self):

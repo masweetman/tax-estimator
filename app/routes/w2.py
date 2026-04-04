@@ -14,6 +14,7 @@ PAYSTUB_NUMERIC_FIELDS = [
     "medicare_withholding", "state_income_withholding", "state_disability_withholding",
     "medical_insurance", "dental_insurance", "vision_insurance",
     "pretax_401k", "roth_401k", "dependent_care_fsa", "healthcare_fsa",
+    "employer_hsa_contribution",
 ]
 
 

@@ -45,6 +45,8 @@ class TaxYear(db.Model):
     prior_year_ca_tax = db.Column(db.Numeric(12, 2), nullable=True)
     prior_year_agi = db.Column(db.Numeric(12, 2), nullable=True)
     taxable_state_refund = db.Column(db.Numeric(12, 2), nullable=True, default=0)
+    ca_employer_hsa_contributions = db.Column(db.Numeric(12, 2), nullable=True, default=0)
+    ca_hsa_earnings = db.Column(db.Numeric(12, 2), nullable=True, default=0)
 
     # Relationships (cascade delete children when TaxYear is deleted)
     employers = db.relationship("Employer", back_populates="tax_year", cascade="all, delete-orphan")
@@ -63,6 +65,7 @@ class TaxYear(db.Model):
     home_offices = db.relationship("HomeOffice", back_populates="tax_year", cascade="all, delete-orphan")
     interest_income = db.relationship("InterestIncome", back_populates="tax_year", cascade="all, delete-orphan", order_by="InterestIncome.payer")
     dividend_income = db.relationship("DividendIncome", back_populates="tax_year", cascade="all, delete-orphan", order_by="DividendIncome.payer")
+    unemployment_compensation = db.relationship("UnemploymentCompensation", back_populates="tax_year", cascade="all, delete-orphan", order_by="UnemploymentCompensation.payer")
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +112,7 @@ class Paystub(db.Model):
     roth_401k = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     dependent_care_fsa = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     healthcare_fsa = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    employer_hsa_contribution = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     notes = db.Column(db.Text, nullable=True)
 
     employer = db.relationship("Employer", back_populates="paystubs")
@@ -271,7 +275,7 @@ class CapitalGain(db.Model):
 # ---------------------------------------------------------------------------
 
 DEDUCTION_CATEGORIES = [
-    "mortgage_interest", "property_tax", "charitable", "medical", "other",
+    "mortgage_interest", "property_tax", "state_tax", "charitable", "medical", "other",
 ]
 
 
@@ -463,6 +467,7 @@ class SingleMemberLLC(db.Model):
     person = db.Column(db.String(64), nullable=False)  # "Person 1" or "Person 2"
     name = db.Column(db.String(128), nullable=False)
     notes = db.Column(db.Text, nullable=True)
+    sstb = db.Column(db.Boolean, nullable=False, default=False)
 
     tax_year = db.relationship("TaxYear", back_populates="llcs")
     home_office = db.relationship("HomeOffice", back_populates="llc", uselist=False, cascade="all, delete-orphan")
@@ -590,3 +595,19 @@ class DividendIncome(db.Model):
     notes = db.Column(db.Text, nullable=True)
 
     tax_year = db.relationship("TaxYear", back_populates="dividend_income")
+
+
+# ---------------------------------------------------------------------------
+# Unemployment Compensation (1099-G)
+# ---------------------------------------------------------------------------
+
+class UnemploymentCompensation(db.Model):
+    __tablename__ = "unemployment_compensation"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tax_year_id = db.Column(db.Integer, db.ForeignKey("tax_year.id", ondelete="CASCADE"), nullable=False)
+    payer = db.Column(db.String(128), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+
+    tax_year = db.relationship("TaxYear", back_populates="unemployment_compensation")

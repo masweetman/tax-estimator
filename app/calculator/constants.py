@@ -85,6 +85,7 @@ SS_EMPLOYEE_RATE = 0.062
 MEDICARE_EMPLOYEE_RATE = 0.0145
 ADDITIONAL_MEDICARE_RATE = 0.009
 ADDITIONAL_MEDICARE_THRESHOLD_MFJ = 250_000
+ADDITIONAL_MEDICARE_THRESHOLD_SINGLE = 200_000
 
 # SE tax rates (before half-SE deduction)
 SE_SELF_EMPLOYMENT_RATE = 0.153   # 12.4% SS + 2.9% Medicare on 92.35% of net
@@ -137,7 +138,14 @@ QBI_THRESHOLD_MFJ = {
     2025: 394_600,
     2026: 404_100,
 }
-QBI_PHASE_IN_RANGE = 100_000   # phase-out window width
+QBI_PHASE_IN_RANGE = 100_000   # MFJ phase-in range
+QBI_THRESHOLD_SINGLE = {
+    2023: 182_050,
+    2024: 191_950,
+    2025: 197_300,
+    2026: 202_550,
+}
+QBI_PHASE_IN_RANGE_SINGLE = 50_000  # Single/HoH phase-in range
 
 # ---------------------------------------------------------------------------
 # IRS Mileage Rate  {year: rate_per_mile}

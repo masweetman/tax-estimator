@@ -23,6 +23,8 @@ def zero_inputs(**overrides):
     base = {
         "tax_year": 2025,
         "w2_wages": 0.0,
+        "w2_wages_p1": 0.0,
+        "w2_wages_p2": 0.0,
         "federal_income_withheld": 0.0,
         "ss_withheld": 0.0,
         "medicare_withheld": 0.0,
@@ -369,12 +371,12 @@ class TestSEPrecision:
             30_000 - with_se["se_deduction"], abs=0.5)
 
     def test_se_no_ss_tax_when_w2_fills_base(self):
-        """When W-2 wages already exceed the SS wage base, SE income owes no SS.
+        """When W-2 wages already exceed the SS wage base for Person 1, SE income owes no SS.
         Only the Medicare portion of SE tax applies.
-        w2_wages=400k → w2_per_person=200k > SS_WAGE_BASE[2025]=176,100
+        w2_wages_p1=400k > SS_WAGE_BASE[2025]=176,100
         → ss_room=0 → ss_tax=0 for SE income.
         """
-        result = calc(w2_wages=400_000, se_net_income_p1=50_000)
+        result = calc(w2_wages=400_000, w2_wages_p1=400_000, se_net_income_p1=50_000)
         # Medicare-only SE tax: 50000 × 0.9235 × 0.029 = 46175 × 0.029 ≈ 1339.08
         expected_se_tax = 50_000 * 0.9235 * 0.029
         assert result["federal_se_tax"] == pytest.approx(expected_se_tax, abs=0.02)
@@ -567,7 +569,7 @@ class TestSafeHarborPrecision:
 class TestSALTCap:
 
     def test_salt_capped_at_10k_federal_with_sdi(self):
-        """Federal SALT = min(salt_paid + ca_sdi, 10,000)."""
+        """Federal SALT = min(salt_paid + ca_sdi + ca_income_withheld, 10,000)."""
         # Both total 15,000 which exceeds the cap
         low = calc(w2_wages=200_000, mortgage_interest=40_000,
                    salt_taxes_paid=8_000, ca_sdi_withheld=2_000)
@@ -576,6 +578,37 @@ class TestSALTCap:
         # Both capped at 10,000 → same taxable income
         assert low["federal_taxable_income"] == pytest.approx(
             high["federal_taxable_income"])
+
+    def test_ca_income_withheld_included_in_salt(self):
+        """CA state income tax withheld feeds into SALT (alongside SDI and manual amounts).
+        mortgage = 40,000 → definitely itemizing.
+        salt_taxes_paid = 4,000; ca_sdi_withheld = 0; ca_income_withheld = 4,000
+        → combined = 8,000 < 10,000 cap → full 8,000 allowed.
+        Compare against ca_income_withheld = 0 → only 4,000 SALT allowed.
+        Difference in taxable income should be 4,000.
+        """
+        without_ca_income = calc(w2_wages=200_000, mortgage_interest=40_000,
+                                 salt_taxes_paid=4_000, ca_sdi_withheld=0,
+                                 ca_income_withheld=0)
+        with_ca_income = calc(w2_wages=200_000, mortgage_interest=40_000,
+                              salt_taxes_paid=4_000, ca_sdi_withheld=0,
+                              ca_income_withheld=4_000)
+        # SALT allowed: 4k vs 8k → taxable income 4k lower when ca_income included
+        assert without_ca_income["federal_taxable_income"] == pytest.approx(
+            with_ca_income["federal_taxable_income"] + 4_000)
+        # Verify the new return keys exist
+        assert with_ca_income["salt_total"] == pytest.approx(8_000.0)
+        assert with_ca_income["salt_cap_applied"] == pytest.approx(10_000.0)
+        assert with_ca_income["itemized_total"] == pytest.approx(
+            40_000 + 0 + 8_000 + 0)  # mortgage + charitable + salt + medical
+
+    def test_ca_income_withheld_still_capped_at_salt_limit(self):
+        """Even with large ca_income_withheld, SALT is capped at 10,000 for 2025."""
+        result = calc(w2_wages=200_000, mortgage_interest=40_000,
+                      salt_taxes_paid=5_000, ca_sdi_withheld=2_000,
+                      ca_income_withheld=10_000)
+        # combined = 17,000 > cap of 10,000 → capped
+        assert result["salt_total"] == pytest.approx(10_000.0)
 
     def test_salt_below_cap_not_rounded_up(self):
         """SALT below $10k is deducted in full (not rounded to cap)."""
@@ -619,9 +652,10 @@ class TestEdgeCases:
         assert result["marginal_federal_rate"] == 0.24
 
     def test_income_at_ss_wage_base_boundary(self):
-        """W-2 wages exactly matching SS wage base → no SS tax on any SE."""
-        # SE income: only Medicare portion (no SS room)
-        result = calc(w2_wages=352_200,    # 2 × SS_WAGE_BASE[2025] = 2 × 176,100
+        """W-2 wages per person exactly matching SS wage base → no SS tax on any SE."""
+        # P1 W-2 = exactly SS wage base → P1 SS room = 0 → SE income for P1: Medicare only
+        result = calc(w2_wages=352_200,    # total household W-2 (for AMT/NIIT calculations)
+                      w2_wages_p1=176_100, # P1 W-2 exactly fills P1 SS base
                       se_net_income_p1=30_000)
         # Only Medicare SE tax ≈ 30,000 × 0.9235 × 0.029
         expected = 30_000 * 0.9235 * 0.029

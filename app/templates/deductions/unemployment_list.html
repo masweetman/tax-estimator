@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Unemployment Compensation – {{ tax_year.year }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Unemployment Compensation &ndash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('deductions.unemployment_add', year=tax_year.year) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Add 1099-G
+  </a>
+</div>
+
+{% if records %}
+<table class="table table-sm table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Payer</th>
+      <th class="text-end">Amount</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.payer }}</td>
+      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">
+        <a href="{{ url_for('deductions.unemployment_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <form method="post" action="{{ url_for('deductions.unemployment_delete', rec_id=r.id) }}" class="d-inline"
+              onsubmit="return confirm('Delete this entry?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="fw-bold">
+      <td>Total</td>
+      <td class="text-end">${{ "%.2f"|format(total) }}</td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+{% else %}
+<div class="alert alert-secondary">No unemployment compensation recorded for {{ tax_year.year }}.</div>
+{% endif %}
+
+<a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-outline-secondary mt-2">
+  <i class="bi bi-arrow-left me-1"></i>Dashboard
+</a>
+{% endblock %}

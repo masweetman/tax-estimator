@@ -247,3 +247,18 @@ def hsa_delete(rec_id):
     flash("HSA contribution deleted.", "info")
     return redirect(url_for("payments.hsa_list", year=year))
 
+
+@payments_bp.route("/<int:year>/hsa/earnings", methods=["POST"])
+@login_required
+def hsa_earnings_save(year):
+    ty = _get_year_or_404(year)
+    raw = request.form.get("ca_hsa_earnings", "0").strip()
+    try:
+        ty.ca_hsa_earnings = float(raw) if raw else 0.0
+    except ValueError:
+        flash("Invalid earnings amount.", "danger")
+        return redirect(url_for("payments.hsa_list", year=year))
+    db.session.commit()
+    flash("HSA earnings updated.", "success")
+    return redirect(url_for("payments.hsa_list", year=year))
+

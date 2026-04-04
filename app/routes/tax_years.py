@@ -84,6 +84,7 @@ def update_basic(year):
     ty.prior_year_ca_tax = _parse_decimal(request.form.get("prior_year_ca_tax", ""))
     ty.prior_year_agi = _parse_decimal(request.form.get("prior_year_agi", ""))
     ty.taxable_state_refund = _parse_decimal(request.form.get("taxable_state_refund", "")) or 0
+    ty.ca_hsa_earnings = _parse_decimal(request.form.get("ca_hsa_earnings", "")) or 0
     db.session.commit()
     flash("Tax year figures updated.", "success")
     return redirect(url_for("settings.settings_page", year=year))

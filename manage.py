@@ -278,6 +278,33 @@ def cmd_migrate_investment_income():
         print("interest_income and dividend_income tables ensured.")
 
 
+def cmd_migrate_sstb():
+    """Add sstb column to single_member_llc table (idempotent)."""
+    app = get_app()
+    with app.app_context():
+        from app import db
+        with db.engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(single_member_llc)"))
+            existing = {row[1] for row in result}
+            if "sstb" not in existing:
+                conn.execute(text(
+                    "ALTER TABLE single_member_llc ADD COLUMN sstb BOOLEAN NOT NULL DEFAULT 0"
+                ))
+                print("Added single_member_llc.sstb")
+            else:
+                print("single_member_llc.sstb already exists")
+            conn.commit()
+
+
+def cmd_migrate_unemployment():
+    """Create unemployment_compensation table (idempotent)."""
+    app = get_app()
+    with app.app_context():
+        from app import db
+        db.create_all()
+        print("unemployment_compensation table ensured.")
+
+
 def cmd_seed_tax_years():
     """Seed default TaxYear and TaxYearSettings for 2025 and 2026 (idempotent)."""
     app = get_app()
@@ -294,6 +321,8 @@ COMMANDS = {
     "migrate-solo401k": cmd_migrate_solo401k,
     "migrate-quarterly-pl": cmd_migrate_quarterly_pl,
     "migrate-investment-income": cmd_migrate_investment_income,
+    "migrate-sstb": cmd_migrate_sstb,
+    "migrate-unemployment": cmd_migrate_unemployment,
     "seed-tax-years": cmd_seed_tax_years,
 }
 

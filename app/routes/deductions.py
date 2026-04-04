@@ -1,4 +1,5 @@
 """Capital gains, itemized deductions, child care, and insurance premium routes."""
+import calendar
 import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required
@@ -6,7 +7,7 @@ from flask_login import login_required
 from app import db
 from app.models import (
     CapitalGain, Deduction, ChildCareExpense, InsurancePremium,
-    InterestIncome, DividendIncome,
+    InterestIncome, DividendIncome, UnemploymentCompensation,
     TaxYear, DEDUCTION_CATEGORIES, INSURANCE_TYPES,
 )
 
@@ -106,17 +107,40 @@ def itemized_list(year):
 def itemized_add(year):
     ty = _get_year_or_404(year)
     if request.method == "POST":
-        rec = Deduction(
-            tax_year_id=ty.id,
-            category=request.form["category"],
-            description=request.form["description"].strip(),
-            amount=float(request.form["amount"]),
-            date=datetime.date.fromisoformat(request.form["date"]),
-            notes=request.form.get("notes", "").strip() or None,
-        )
-        db.session.add(rec)
-        db.session.commit()
-        flash("Deduction added.", "success")
+        category = request.form["category"]
+        description = request.form["description"].strip()
+        amount = float(request.form["amount"])
+        entry_date = datetime.date.fromisoformat(request.form["date"])
+        notes = request.form.get("notes", "").strip() or None
+        recurring = request.form.get("recurring") == "1" and category == "charitable"
+        if recurring:
+            records = []
+            for month in range(1, 13):
+                last_day = calendar.monthrange(entry_date.year, month)[1]
+                day = min(entry_date.day, last_day)
+                records.append(Deduction(
+                    tax_year_id=ty.id,
+                    category=category,
+                    description=description,
+                    amount=amount,
+                    date=datetime.date(entry_date.year, month, day),
+                    notes=notes,
+                ))
+            db.session.add_all(records)
+            db.session.commit()
+            flash("12 recurring charitable deductions added.", "success")
+        else:
+            rec = Deduction(
+                tax_year_id=ty.id,
+                category=category,
+                description=description,
+                amount=amount,
+                date=entry_date,
+                notes=notes,
+            )
+            db.session.add(rec)
+            db.session.commit()
+            flash("Deduction added.", "success")
         return redirect(url_for("deductions.itemized_list", year=year))
     return render_template("deductions/itemized_form.html", tax_year=ty, record=None,
                            categories=DEDUCTION_CATEGORIES)
@@ -401,4 +425,61 @@ def dividend_delete(rec_id):
     db.session.commit()
     flash("Dividend income deleted.", "info")
     return redirect(url_for("deductions.dividend_list", year=year))
+
+
+# ---------------------------------------------------------------------------
+# Unemployment Compensation (1099-G)
+# ---------------------------------------------------------------------------
+
+@deductions_bp.route("/<int:year>/unemployment")
+@login_required
+def unemployment_list(year):
+    ty = _get_year_or_404(year)
+    records = UnemploymentCompensation.query.filter_by(tax_year_id=ty.id).order_by(UnemploymentCompensation.payer).all()
+    total = sum(float(r.amount) for r in records)
+    return render_template("deductions/unemployment_list.html", tax_year=ty, records=records, total=total)
+
+
+@deductions_bp.route("/<int:year>/unemployment/add", methods=["GET", "POST"])
+@login_required
+def unemployment_add(year):
+    ty = _get_year_or_404(year)
+    if request.method == "POST":
+        rec = UnemploymentCompensation(
+            tax_year_id=ty.id,
+            payer=request.form["payer"].strip(),
+            amount=float(request.form["amount"]),
+            notes=request.form.get("notes", "").strip() or None,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        flash("Unemployment compensation added.", "success")
+        return redirect(url_for("deductions.unemployment_list", year=year))
+    return render_template("deductions/unemployment_form.html", tax_year=ty, record=None)
+
+
+@deductions_bp.route("/unemployment/<int:rec_id>/edit", methods=["GET", "POST"])
+@login_required
+def unemployment_edit(rec_id):
+    rec = db.session.get(UnemploymentCompensation, rec_id) or abort(404)
+    year = rec.tax_year.year
+    if request.method == "POST":
+        rec.payer = request.form["payer"].strip()
+        rec.amount = float(request.form["amount"])
+        rec.notes = request.form.get("notes", "").strip() or None
+        db.session.commit()
+        flash("Unemployment compensation updated.", "success")
+        return redirect(url_for("deductions.unemployment_list", year=year))
+    return render_template("deductions/unemployment_form.html", tax_year=rec.tax_year, record=rec)
+
+
+@deductions_bp.route("/unemployment/<int:rec_id>/delete", methods=["POST"])
+@login_required
+def unemployment_delete(rec_id):
+    rec = db.session.get(UnemploymentCompensation, rec_id) or abort(404)
+    year = rec.tax_year.year
+    db.session.delete(rec)
+    db.session.commit()
+    flash("Unemployment compensation deleted.", "info")
+    return redirect(url_for("deductions.unemployment_list", year=year))
 

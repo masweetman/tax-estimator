@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}California Tax Summary – {{ tax_year.year }}{% endblock %}
+
+{% macro money(val) %}${{ "{:,.0f}".format(val|float) }}{% endmacro %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">California Tax Summary &mdash; {{ tax_year.year }}</h2>
+  <a href="{{ url_for('dashboard.index') }}?year={{ tax_year.year }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# Computed values                                                      #}
+{# ------------------------------------------------------------------ #}
+
+{% set ca_exemption_credits = result.ca_personal_exemption + result.ca_dependent_credit_total + result.ca_young_child_credit_total %}
+{% set ca_payments          = inputs.ca_income_withheld + inputs.ca_estimated_paid %}
+{% set ca_balance           = result.ca_income_tax - ca_payments %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <table class="table table-sm table-bordered">
+      <colgroup>
+        <col style="width:65%">
+        <col style="width:17.5%">
+        <col style="width:17.5%">
+      </colgroup>
+      <thead class="table-dark">
+        <tr>
+          <th></th>
+          <th class="text-end">{{ tax_year.year - 1 }}</th>
+          <th class="text-end">{{ tax_year.year }}</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {# ---- FEDERAL AGI ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>FEDERAL ADJUSTED GROSS INCOME (AGI)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.federal_agi) }}</td>
+        </tr>
+
+        {# ---- CA ADDITIONS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>CALIFORNIA ADDITIONS TO INCOME</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_additions_total) }}</td>
+        </tr>
+        {% if result.ca_additions_hsa_earnings %}
+        <tr>
+          <td class="ps-4">Health Savings Account Earnings</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_additions_hsa_earnings) }}</td>
+        </tr>
+        {% endif %}
+        {% if result.ca_additions_employer_hsa %}
+        <tr>
+          <td class="ps-4">Employer HSA Contributions</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_additions_employer_hsa) }}</td>
+        </tr>
+        {% endif %}
+        {% if result.ca_additions_hsa_addback %}
+        <tr>
+          <td class="ps-4">Health Savings Account Deduction Addback</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_additions_hsa_addback) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- CA SUBTRACTIONS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>CALIFORNIA SUBTRACTIONS FROM INCOME</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_subtractions_total) }}</td>
+        </tr>
+        {% if result.ca_subtractions_unemployment %}
+        <tr>
+          <td class="ps-4">Unemployment Compensation and Paid Family Leave</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_subtractions_unemployment) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- CA AGI ---- #}
+        <tr class="table-primary fw-bold">
+          <td>CALIFORNIA ADJUSTED GROSS INCOME (AGI)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_agi) }}</td>
+        </tr>
+
+        {# ---- CA DEDUCTION ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>CALIFORNIA STANDARD OR ITEMIZED DEDUCTION
+            <span class="text-muted fw-normal small">({{ result.ca_deduction_type }})</span>
+          </td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_deduction_amount) }}</td>
+        </tr>
+
+        {# ---- CA TAXABLE INCOME ---- #}
+        <tr class="table-primary fw-bold">
+          <td>CALIFORNIA TAXABLE INCOME</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_taxable_income) }}</td>
+        </tr>
+
+        {# ---- CA TAX ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>CALIFORNIA TAX TABLE OR TAX RATE SCHEDULE TAX</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_income_tax_before_surtax) }}</td>
+        </tr>
+        {% if result.ca_mental_health_surtax %}
+        <tr>
+          <td class="ps-4">Mental Health Services Surtax (1%)</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_mental_health_surtax) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- EXEMPTION CREDITS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>EXEMPTION CREDITS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(ca_exemption_credits) }}</td>
+        </tr>
+        {% if result.ca_personal_exemption %}
+        <tr>
+          <td class="ps-4">Personal Exemption Credit</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_personal_exemption) }}</td>
+        </tr>
+        {% endif %}
+        {% if result.ca_dependent_credit_total %}
+        <tr>
+          <td class="ps-4">Dependent Exemption Credits</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_dependent_credit_total) }}</td>
+        </tr>
+        {% endif %}
+        {% if result.ca_young_child_credit_total %}
+        <tr>
+          <td class="ps-4">Young Child Tax Credit</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_young_child_credit_total) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- TOTAL CA TAX ---- #}
+        <tr class="table-primary fw-bold">
+          <td>TOTAL CALIFORNIA TAX</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(result.ca_income_tax) }}</td>
+        </tr>
+
+        {# ---- NONREFUNDABLE CREDITS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>NONREFUNDABLE CREDITS</td>
+          <td class="text-end"></td>
+          <td class="text-end">$0</td>
+        </tr>
+
+        {# ---- OTHER TAXES ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>OTHER TAXES</td>
+          <td class="text-end"></td>
+          <td class="text-end">$0</td>
+        </tr>
+
+        {# ---- PAYMENTS ---- #}
+        <tr class="table-secondary fw-bold">
+          <td>PAYMENTS AND REFUNDABLE CREDITS</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(ca_payments) }}</td>
+        </tr>
+        <tr>
+          <td class="ps-4">California Income Tax Withheld</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(inputs.ca_income_withheld) }}</td>
+        </tr>
+        {% if inputs.ca_estimated_paid %}
+        <tr>
+          <td class="ps-4">California Estimated Tax and Extension Payments</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(inputs.ca_estimated_paid) }}</td>
+        </tr>
+        {% endif %}
+
+        {# ---- REFUND / OWED ---- #}
+        {% if ca_balance <= 0 %}
+        <tr class="table-success fw-bold">
+          <td>TOTAL CALIFORNIA REFUND</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(-ca_balance) }}</td>
+        </tr>
+        <tr class="fw-semibold">
+          <td class="ps-4">Refund</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(-ca_balance) }}</td>
+        </tr>
+        {% else %}
+        <tr class="table-warning fw-bold">
+          <td>TOTAL AMOUNT OWED TO CALIFORNIA</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(ca_balance) }}</td>
+        </tr>
+        <tr class="fw-semibold">
+          <td class="ps-4">Amount Owed</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(ca_balance) }}</td>
+        </tr>
+        {% endif %}
+
+      </tbody>
+    </table>
+
+    <div class="text-muted small mt-2">
+      <i class="bi bi-info-circle me-1"></i>
+      This is a projection based on data entered in the app. Prior-year column is not yet populated.
+      CA employer HSA contributions and HSA earnings can be entered in Tax Year Settings.
+    </div>
+  </div>
+</div>
+{% endblock %}

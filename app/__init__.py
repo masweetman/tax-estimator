@@ -36,6 +36,7 @@ def create_app(config_name="default"):
     from app.routes.settings import settings_bp
     from app.routes.llc import llc_bp
     from app.routes.federal_summary import federal_summary_bp
+    from app.routes.ca_summary import ca_summary_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -49,6 +50,7 @@ def create_app(config_name="default"):
     app.register_blueprint(settings_bp)
     app.register_blueprint(llc_bp)
     app.register_blueprint(federal_summary_bp)
+    app.register_blueprint(ca_summary_bp)
 
     @app.context_processor
     def inject_person_names():

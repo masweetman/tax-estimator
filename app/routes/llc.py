@@ -55,6 +55,7 @@ def llc_add(year):
             person=person,
             name=request.form["name"].strip(),
             notes=request.form.get("notes", "").strip() or None,
+            sstb="sstb" in request.form,
         )
         db.session.add(llc)
         db.session.commit()
@@ -81,6 +82,7 @@ def llc_edit(llc_id):
         llc.person = person
         llc.name = request.form["name"].strip()
         llc.notes = request.form.get("notes", "").strip() or None
+        llc.sstb = "sstb" in request.form
         db.session.commit()
         flash("LLC updated.", "success")
         return redirect(url_for("llc.llc_list", year=year))

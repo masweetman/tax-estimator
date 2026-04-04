@@ -8,6 +8,7 @@ from .constants import (
     MEDICARE_EMPLOYEE_RATE,
     ADDITIONAL_MEDICARE_RATE,
     ADDITIONAL_MEDICARE_THRESHOLD_MFJ,
+    ADDITIONAL_MEDICARE_THRESHOLD_SINGLE,
     SE_SELF_EMPLOYMENT_RATE,
     SE_NET_EARNINGS_FACTOR,
     NIIT_RATE,
@@ -26,7 +27,9 @@ from .constants import (
     CHARITABLE_NONITEMIZER_CAP_MFJ,
     QBI_RATE,
     QBI_THRESHOLD_MFJ,
+    QBI_THRESHOLD_SINGLE,
     QBI_PHASE_IN_RANGE,
+    QBI_PHASE_IN_RANGE_SINGLE,
     SOLO_401K_EMPLOYEE_LIMIT,
     SOLO_401K_TOTAL_LIMIT,
 )
@@ -112,27 +115,39 @@ def calculate_solo_401k_max(net_profit, year):
     }
 
 
-def calculate_qbi(se_net_total, ordinary_taxable, federal_agi, year, inputs):
+def calculate_qbi(qbi_base, pre_qbi_taxable_income, net_cap_gains, year, inputs):
     """Compute the §199A Qualified Business Income deduction.
 
-    For sole proprietors / SMLLCs (no W-2 employees), the W-2 wage limitation
-    fully phases out QBI once taxable income exceeds threshold + QBI_PHASE_IN_RANGE.
+    Three-zone logic per §199A (OBBBA 2025 thresholds, $0 W-2 wages / UBIA):
+      Zone 1: TI <= lower threshold  → 20% × QBI
+      Zone 2: TI >  upper threshold  → $0  (wage-limit = $0 with no employees)
+      Zone 3: phase-in range         → linearly blend Zone 1 → Zone 2
+    Overall cap: deduction <= 20% × (TI − net capital gains).
     """
-    if se_net_total <= 0:
+    if qbi_base <= 0:
         return 0.0
 
-    threshold = inputs.get("qbi_threshold") or QBI_THRESHOLD_MFJ.get(year, QBI_THRESHOLD_MFJ[2025])
+    filing_status = inputs.get("filing_status", "MFJ")
+    if filing_status == "MFJ":
+        lower = inputs.get("qbi_threshold") or QBI_THRESHOLD_MFJ.get(year, QBI_THRESHOLD_MFJ[2025])
+        phase_range = QBI_PHASE_IN_RANGE
+    else:
+        lower = QBI_THRESHOLD_SINGLE.get(year, QBI_THRESHOLD_SINGLE[2025])
+        phase_range = QBI_PHASE_IN_RANGE_SINGLE
+    upper = lower + phase_range
 
-    # Phase-out fraction: 0 below threshold, 1 at threshold + range
-    excess = max(0.0, federal_agi - threshold)
-    phase_out_pct = min(1.0, excess / QBI_PHASE_IN_RANGE) if excess > 0 else 0.0
+    tentative = qbi_base * QBI_RATE
+    if pre_qbi_taxable_income <= lower:
+        deduction = tentative                                # Zone 1
+    elif pre_qbi_taxable_income > upper:
+        deduction = 0.0                                     # Zone 2 ($0 W-2/UBIA)
+    else:
+        phase_in_pct = (pre_qbi_taxable_income - lower) / phase_range
+        deduction = tentative * (1.0 - phase_in_pct)        # Zone 3
 
-    qbi_gross = se_net_total * QBI_RATE * (1.0 - phase_out_pct)
-
-    # Overall income cap: QBI deduction ≤ 20% of ordinary taxable income
-    income_cap = max(0.0, ordinary_taxable * QBI_RATE)
-
-    return round(min(qbi_gross, income_cap), 2)
+    # Overall income cap: deduction <= 20% of (TI - net capital gains)
+    income_cap = max(0.0, (pre_qbi_taxable_income - net_cap_gains) * QBI_RATE)
+    return round(min(deduction, income_cap), 2)
 
 
 def calculate_se(inputs):
@@ -143,7 +158,6 @@ def calculate_se(inputs):
     """
     year = inputs.get("tax_year", 2025)
     ss_base = inputs.get("ss_wage_base") or SS_WAGE_BASE.get(year, SS_WAGE_BASE[2025])
-    w2_wages = float(inputs.get("w2_wages", 0))
 
     se_net_p1 = float(inputs.get("se_net_income_p1", 0))
     se_net_p2 = float(inputs.get("se_net_income_p2", 0))
@@ -152,13 +166,6 @@ def calculate_se(inputs):
     if se_total <= 0:
         return {"se_net_total": 0.0, "se_deduction": 0.0, "federal_se_tax": 0.0}
 
-    # SE subject to SS: net earnings × 92.35%, capped at SS wage base minus W-2 wages
-    net_earnings = se_total * SE_NET_EARNINGS_FACTOR
-
-    # SS portion – individual-level (per-person) but simplified here to combined
-    # In reality each person has their own SS wage base. We simplify by treating
-    # combined W-2 wages as filling the base, then SE for each person is separate.
-    # For this app we use a per-person approach:
     def _person_se_tax(se_net, w2_for_person):
         ne = se_net * SE_NET_EARNINGS_FACTOR
         ss_room = max(0.0, ss_base - w2_for_person)
@@ -167,10 +174,11 @@ def calculate_se(inputs):
         medicare_tax = ne * 0.029    # both halves
         return ss_tax + medicare_tax
 
-    # Simplification: assume W-2 wages split equally between two filers
-    w2_per_person = w2_wages / 2
-    se_tax = _person_se_tax(se_net_p1, w2_per_person) + _person_se_tax(se_net_p2, w2_per_person)
-    half_se = se_tax / 2.0  # above-the-line deduction
+    # Use actual per-person W-2 wages to correctly offset each person's SS wage base.
+    w2_p1 = float(inputs.get("w2_wages_p1", 0))
+    w2_p2 = float(inputs.get("w2_wages_p2", 0))
+    se_tax = _person_se_tax(se_net_p1, w2_p1) + _person_se_tax(se_net_p2, w2_p2)
+    half_se = se_tax / 2.0  # above-the-line deduction (Addl. Medicare is not deductible)
 
     return {
         "se_net_total": se_total,
@@ -197,6 +205,7 @@ def calculate_federal(inputs):
     ordinary_dividends = float(inputs.get("ordinary_dividends", 0))
     qualified_dividends = min(float(inputs.get("qualified_dividends", 0)), ordinary_dividends)
     taxable_state_refund = float(inputs.get("taxable_state_refund", 0))
+    unemployment_compensation = float(inputs.get("unemployment_compensation", 0))
 
     # --- SE components ---
     se = calculate_se(inputs)
@@ -204,28 +213,23 @@ def calculate_federal(inputs):
     se_deduction = se["se_deduction"]
 
     # --- Above-the-line AGI adjustments ---
-    pretax_401k = float(inputs.get("pretax_401k_total", 0))
-    # Note: pre-tax 401k is typically excluded from Box 1 wages (W-2), so it's
-    # already not in w2_wages. We don't double-subtract it here.
-    # However, if the caller passes w2_wages as GROSS before 401k, we subtract.
-    # Convention: w2_wages = box-1 wages (post 401k). No double-deduction.
-
+    # Note: w2_wages is Box-1 wages (pre-tax 401k and other payroll benefits are
+    # already excluded). Only Schedule-1 items are subtracted below.
     ira_deduction = float(inputs.get("traditional_ira_total", 0))
     sep_ira = float(inputs.get("sep_ira_total", 0))
     solo_401k = float(inputs.get("solo_401k_total", 0))
     hsa = float(inputs.get("hsa_total", 0))
     se_health_ins = float(inputs.get("se_health_insurance", 0))
-    vehicle_mileage_deduction = float(inputs.get("vehicle_mileage_deduction", 0))
 
     # All ordinary dividends enter gross income / AGI.
     # Qualified dividends are a subset that gets LTCG-rate treatment at the
     # bracket calculation stage — they do NOT reduce gross income here.
     gross_income = (w2_wages + se_net_total + stcg + ltcg
-                    + interest_income + ordinary_dividends + taxable_state_refund)
+                    + interest_income + ordinary_dividends + taxable_state_refund
+                    + unemployment_compensation)
 
     federal_agi = (
         gross_income
-        - pretax_401k
         - se_deduction
         - ira_deduction
         - sep_ira
@@ -240,14 +244,15 @@ def calculate_federal(inputs):
     charitable = float(inputs.get("charitable", 0))
     salt_paid = float(inputs.get("salt_taxes_paid", 0))
     medical = max(0.0, float(inputs.get("medical_expenses", 0)) - federal_agi * 0.075)
-    # SDI paid is deductible as state tax (but still subject to SALT cap combined)
+    # SDI and CA state income tax are deductible as state taxes (subject to SALT cap)
     ca_sdi = float(inputs.get("ca_sdi_withheld", 0))
+    ca_state_income = float(inputs.get("ca_income_withheld", 0))
     # SALT cap: year-keyed, with OBBBA phase-down for high incomes (2026+)
     salt_cap_base = inputs.get("salt_cap") or SALT_CAP.get(year, SALT_CAP[2025])
     phase_down_start = SALT_PHASE_DOWN_START.get(year)
     if phase_down_start and federal_agi > phase_down_start:
         salt_cap_base = max(SALT_FLOOR, salt_cap_base - (federal_agi - phase_down_start))
-    salt_total = min(salt_paid + ca_sdi, salt_cap_base)
+    salt_total = min(salt_paid + ca_sdi + ca_state_income, salt_cap_base)
 
     itemized = mortgage_interest + charitable + salt_total + medical
 
@@ -267,9 +272,10 @@ def calculate_federal(inputs):
     federal_taxable_income = max(0.0, federal_agi - deduction - charitable_nonitemizer)
 
     # --- QBI deduction (§199A) ---
-    # Computed against pre-QBI ordinary taxable income for the income cap
-    pre_qbi_ordinary = max(0.0, federal_taxable_income - ltcg)
-    qbi_deduction = calculate_qbi(se_net_total, pre_qbi_ordinary, federal_agi, year, inputs)
+    # Use full pre-QBI taxable income for threshold zone test; net cap gains for income cap.
+    pre_qbi_total = federal_taxable_income
+    net_cap_gains = ltcg + qualified_dividends
+    qbi_deduction = calculate_qbi(se_net_total, pre_qbi_total, net_cap_gains, year, inputs)
     federal_taxable_income = max(0.0, federal_taxable_income - qbi_deduction)
 
     ordinary_taxable = max(0.0, federal_taxable_income - ltcg - qualified_dividends)
@@ -324,7 +330,12 @@ def calculate_federal(inputs):
 
     # --- Additional Medicare Tax ---
     total_wages_and_se = w2_wages + se_net_total
-    amt_threshold = inputs.get("additional_medicare_threshold") or ADDITIONAL_MEDICARE_THRESHOLD_MFJ
+    filing_status = inputs.get("filing_status", "MFJ")
+    default_amt_threshold = (
+        ADDITIONAL_MEDICARE_THRESHOLD_MFJ if filing_status == "MFJ"
+        else ADDITIONAL_MEDICARE_THRESHOLD_SINGLE
+    )
+    amt_threshold = inputs.get("additional_medicare_threshold") or default_amt_threshold
     amt_rate = inputs.get("additional_medicare_rate") or ADDITIONAL_MEDICARE_RATE
     amt_base = max(0.0, total_wages_and_se - amt_threshold)
     additional_medicare_tax = round(amt_base * amt_rate, 2)
@@ -341,6 +352,18 @@ def calculate_federal(inputs):
         tax_after_credits + federal_se_tax + additional_medicare_tax + niit, 2
     )
 
+    # --- Excess Social Security withholding ---
+    # Each person's SS withholding is capped independently at ss_base * 6.2%.
+    # Any excess is refundable (Schedule 3, Line 11) and treated as a payment.
+    max_ss_per_person = ss_base * SS_EMPLOYEE_RATE
+    ss_withheld_p1 = float(inputs.get("ss_withheld_p1", 0))
+    ss_withheld_p2 = float(inputs.get("ss_withheld_p2", 0))
+    excess_ss = round(
+        max(0.0, ss_withheld_p1 - max_ss_per_person)
+        + max(0.0, ss_withheld_p2 - max_ss_per_person),
+        2,
+    )
+
     # --- Marginal rate ---
     marginal_rate = _marginal_rate(ordinary_taxable, brackets)
 
@@ -349,6 +372,11 @@ def calculate_federal(inputs):
         "federal_taxable_income": round(federal_taxable_income, 2),
         "deduction_type": deduction_type,
         "deduction_amount": round(deduction, 2),
+        "standard_deduction": round(std_deduction, 2),
+        "itemized_total": round(itemized, 2),
+        "salt_total": round(salt_total, 2),
+        "salt_cap_applied": round(salt_cap_base, 2),
+        "medical_deduction": round(medical, 2),
         "charitable_nonitemizer_deduction": round(charitable_nonitemizer, 2),
         "federal_income_tax_before_credits": round(federal_income_tax_before_credits, 2),
         "child_tax_credit": ctc,
@@ -364,4 +392,5 @@ def calculate_federal(inputs):
         "federal_total_tax": federal_total_tax,
         "effective_federal_rate": round(tax_after_credits / federal_agi, 4) if federal_agi else 0,
         "marginal_federal_rate": marginal_rate,
+        "excess_ss": excess_ss,
     }

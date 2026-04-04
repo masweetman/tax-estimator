@@ -96,6 +96,7 @@
           {{ money_field("Roth 401(k)", "roth_401k", prefill.get('roth_401k', 0 if adding else stub.roth_401k)) }}
           {{ money_field("Dependent Care FSA", "dependent_care_fsa", prefill.get('dependent_care_fsa', 0 if adding else stub.dependent_care_fsa)) }}
           {{ money_field("Healthcare FSA", "healthcare_fsa", prefill.get('healthcare_fsa', 0 if adding else stub.healthcare_fsa)) }}
+          {{ money_field("Employer HSA (Box 12W)", "employer_hsa_contribution", prefill.get('employer_hsa_contribution', 0 if adding else stub.employer_hsa_contribution)) }}
         </div>
       </div>
 

@@ -20,9 +20,10 @@
 {% set interest         = inputs.interest_income %}
 {% set dividends        = inputs.ordinary_dividends %}
 {% set state_refund     = inputs.taxable_state_refund %}
-{% set business_income  = inputs.se_net_income_p1 + inputs.se_net_income_p2 %}
+{% set business_income  = inputs.business_income_net %}
 {% set cap_gains        = inputs.long_term_capital_gains + inputs.short_term_capital_gains %}
-{% set total_income     = wages + interest + dividends + state_refund + business_income + cap_gains %}
+{% set unemployment     = inputs.unemployment_compensation | default(0) | float %}
+{% set total_income     = wages + interest + dividends + state_refund + business_income + cap_gains + unemployment %}
 
 {# TOTAL ADJUSTMENTS lines #}
 {% set hsa_adj          = inputs.hsa_total %}
@@ -35,6 +36,20 @@
 {% set std_itemized     = result.deduction_amount %}
 {% set qbi_ded          = result.qbi_deduction %}
 {% set total_deductions = std_itemized + qbi_ded %}
+
+{# DEDUCTIONS BREAKDOWN #}
+{% set ded_mortgage     = inputs.mortgage_interest | float %}
+{% set ded_charitable   = inputs.charitable | float %}
+{% set ded_prop_taxes   = inputs.property_taxes_paid | default(0) | float %}
+{% set ded_state_manual = inputs.state_taxes_manual | default(0) | float %}
+{% set ded_ca_income    = inputs.ca_income_withheld | default(0) | float %}
+{% set ded_ca_sdi       = inputs.ca_sdi_withheld | default(0) | float %}
+{% set ded_salt_before  = ded_prop_taxes + ded_state_manual + ded_ca_income + ded_ca_sdi %}
+{% set ded_salt_allowed = result.salt_total %}
+{% set ded_salt_cap     = result.salt_cap_applied %}
+{% set ded_medical      = result.medical_deduction %}
+{% set ded_itemized     = result.itemized_total %}
+{% set ded_standard     = result.standard_deduction %}
 
 {# TOTAL TAX (before credits, includes all tax types) #}
 {% set income_tax_bc    = result.federal_income_tax_before_credits %}
@@ -52,7 +67,8 @@
 {% set fed_withheld     = inputs.federal_income_withheld %}
 {% set add_med_withheld = [0, inputs.medicare_withheld - inputs.w2_wages * 0.0145] | max %}
 {% set est_payments     = inputs.federal_estimated_paid %}
-{% set total_payments   = fed_withheld + add_med_withheld + est_payments %}
+{% set excess_ss        = result.excess_ss | default(0) | float %}
+{% set total_payments   = fed_withheld + add_med_withheld + est_payments + excess_ss %}
 
 {# BALANCE #}
 {% set net_liability    = total_tax - total_credits %}
@@ -113,6 +129,13 @@
           <td class="text-end"></td>
           <td class="text-end">{{ money(cap_gains) }}</td>
         </tr>
+        {% if unemployment %}
+        <tr>
+          <td class="ps-4">Unemployment Compensation</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(unemployment) }}</td>
+        </tr>
+        {% endif %}
 
         {# ---- TOTAL ADJUSTMENTS ---- #}
         <tr class="table-secondary fw-bold">
@@ -169,6 +192,94 @@
           <td class="text-end"></td>
           <td class="text-end">{{ money(std_itemized) }}</td>
         </tr>
+
+        {# ---- Federal Deductions Summary ---- #}
+        <tr class="table-light">
+          <td colspan="3" class="pt-3 pb-1 px-3">
+            <strong>Federal Deductions Summary</strong>
+          </td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-4 text-muted small">Standard Deduction ({{ tax_year.year }})</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_standard) }}</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-4"><em>Itemized Deductions</em></td>
+          <td class="text-end"></td>
+          <td class="text-end"></td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5 text-muted small">Mortgage Interest</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_mortgage) }}</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5 text-muted small">Charitable Donations</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_charitable) }}</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5 text-muted small">Property Taxes (personal portion)</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_prop_taxes) }}</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5 text-muted small">State &amp; Local Taxes</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small"></td>
+        </tr>
+        {% if ded_ca_income %}
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted small">CA State Income Tax Withheld</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_ca_income) }}</td>
+        </tr>
+        {% endif %}
+        {% if ded_ca_sdi %}
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted small">CA SDI Withheld</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_ca_sdi) }}</td>
+        </tr>
+        {% endif %}
+        {% if ded_state_manual %}
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted small">Other State/Local Taxes (manual)</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_state_manual) }}</td>
+        </tr>
+        {% endif %}
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted small">SALT Subtotal</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_salt_before) }}</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted small">SALT Cap ({{ tax_year.year }})</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">({{ money(ded_salt_cap) }})</td>
+        </tr>
+        <tr class="table-light">
+          <td class="ps-5" style="padding-left:3.5rem !important"><span class="text-muted">SALT Allowed</span></td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted">{{ money(ded_salt_allowed) }}</td>
+        </tr>
+        {% if ded_medical %}
+        <tr class="table-light">
+          <td class="ps-5 text-muted small">Medical Expenses (net of 7.5% AGI floor)</td>
+          <td class="text-end text-muted small"></td>
+          <td class="text-end text-muted small">{{ money(ded_medical) }}</td>
+        </tr>
+        {% endif %}
+        <tr class="table-light border-top">
+          <td class="ps-4"><strong>Total Itemized</strong>
+            {% if result.deduction_type == 'itemized' %}<span class="badge bg-success ms-1">Used</span>{% else %}<span class="badge bg-secondary ms-1">Not Used</span>{% endif %}
+          </td>
+          <td class="text-end"></td>
+          <td class="text-end"><strong>{{ money(ded_itemized) }}</strong></td>
+        </tr>
+
         {% if qbi_ded %}
         <tr>
           <td class="ps-4">Qualified Business Income Deduction</td>
@@ -266,6 +377,13 @@
           <td class="ps-4">Estimated Tax Payments</td>
           <td class="text-end"></td>
           <td class="text-end">{{ money(est_payments) }}</td>
+        </tr>
+        {% endif %}
+        {% if excess_ss %}
+        <tr>
+          <td class="ps-4">Excess Social Security Tax Withheld</td>
+          <td class="text-end"></td>
+          <td class="text-end">{{ money(excess_ss) }}</td>
         </tr>
         {% endif %}
 

@@ -23,6 +23,14 @@
     <label class="form-label">Notes <span class="text-muted small">(optional)</span></label>
     <textarea name="notes" class="form-control" rows="2">{{ record.notes if record else '' }}</textarea>
   </div>
+  <div class="mb-3 form-check">
+    <input type="checkbox" name="sstb" class="form-check-input" id="sstbCheck"
+           {{ 'checked' if record and record.sstb }}>
+    <label class="form-check-label" for="sstbCheck">
+      SSTB (Specified Service Trade or Business)
+      <span class="text-muted small d-block">e.g. consulting, law, finance — limits QBI deduction above income thresholds</span>
+    </label>
+  </div>
   <button type="submit" class="btn btn-primary">Save</button>
   <a href="{{ url_for('llc.llc_list', year=tax_year.year) }}" class="btn btn-secondary ms-2">Cancel</a>
 </form>

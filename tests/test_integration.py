@@ -783,15 +783,17 @@ class TestUserStoryRetirementContributions:
             "tax_year": 2025, "w2_wages": 200_000, "qualifying_children": 0,
             "prior_year_federal_tax": 0, "prior_year_ca_tax": 0, "prior_year_agi": 0,
         })
+        # w2_wages is Box-1: $200k gross - $23k pre-tax 401k = $177k Box-1 wages.
+        # IRA and HSA are above-the-line Schedule-1 deductions.
         with_contributions = calculate({
-            "tax_year": 2025, "w2_wages": 200_000,
+            "tax_year": 2025, "w2_wages": 177_000,
             "pretax_401k_total": 23_000,
             "traditional_ira_total": 7_000,
             "hsa_total": 8_300,
             "qualifying_children": 0,
             "prior_year_federal_tax": 0, "prior_year_ca_tax": 0, "prior_year_agi": 0,
         })
-        expected_reduction = 23_000 + 7_000 + 8_300  # 38,300
+        expected_reduction = 23_000 + 7_000 + 8_300  # 38,300 total reduction vs gross wages
         assert with_contributions["federal_agi"] == pytest.approx(
             no_contributions["federal_agi"] - expected_reduction)
 

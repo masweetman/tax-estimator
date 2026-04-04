@@ -41,9 +41,19 @@ def calculate_california(inputs, federal_result):
     brackets = inputs.get("ca_brackets") or CA_BRACKETS_MFJ.get(year, CA_BRACKETS_MFJ[2025])
     std_deduction = inputs.get("ca_standard_deduction") or CA_STANDARD_DEDUCTION_MFJ.get(year, CA_STANDARD_DEDUCTION_MFJ[2025])
 
-    # CA AGI = federal AGI (simplified; CA conforms to most above-the-line deductions)
-    # Note: CA does not allow IRA deduction for some cases, but we simplify here.
-    ca_agi = float(federal_result["federal_agi"])
+    # CA AGI = federal AGI + CA additions - CA subtractions
+    # CA does not conform to the federal HSA deduction (R&TC § 17215.4):
+    #   - Employee HSA contributions (federal Schedule 1) must be added back
+    #   - Employer HSA contributions (W-2 Box 12W) are taxable in CA
+    #   - HSA investment earnings are taxable in CA
+    # CA does not tax unemployment compensation (R&TC § 17083): subtract it.
+    federal_agi = float(federal_result["federal_agi"])
+    hsa_addback = float(inputs.get("hsa_total", 0))
+    employer_hsa = float(inputs.get("ca_employer_hsa_contributions", 0))
+    hsa_earnings = float(inputs.get("ca_hsa_earnings", 0))
+    ca_additions = hsa_addback + employer_hsa + hsa_earnings
+    ca_subtractions_unemployment = float(inputs.get("unemployment_compensation", 0))
+    ca_agi = federal_agi + ca_additions - ca_subtractions_unemployment
 
     # --- CA Itemized deductions (no SALT cap; SDI not deductible on CA) ---
     mortgage_interest = float(inputs.get("mortgage_interest", 0))
@@ -91,6 +101,12 @@ def calculate_california(inputs, federal_result):
 
     return {
         "ca_agi": round(ca_agi, 2),
+        "ca_additions_total": round(ca_additions, 2),
+        "ca_additions_hsa_addback": round(hsa_addback, 2),
+        "ca_additions_employer_hsa": round(employer_hsa, 2),
+        "ca_additions_hsa_earnings": round(hsa_earnings, 2),
+        "ca_subtractions_total": round(ca_subtractions_unemployment, 2),
+        "ca_subtractions_unemployment": round(ca_subtractions_unemployment, 2),
         "ca_taxable_income": round(ca_taxable_income, 2),
         "ca_deduction_type": ca_deduction_type,
         "ca_deduction_amount": round(ca_deduction, 2),

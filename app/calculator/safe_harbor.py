@@ -40,10 +40,11 @@ def calculate_safe_harbor(inputs, federal_result, ca_result):
     # --- Payments made so far ---
     fed_withheld = float(inputs.get("federal_income_withheld", 0))
     fed_estimated = float(inputs.get("federal_estimated_paid", 0))
+    excess_ss = float(federal_result.get("excess_ss", 0))
     ca_withheld = float(inputs.get("ca_income_withheld", 0))
     ca_estimated = float(inputs.get("ca_estimated_paid", 0))
 
-    fed_paid_ytd = fed_withheld + fed_estimated
+    fed_paid_ytd = fed_withheld + fed_estimated + excess_ss
     ca_paid_ytd = ca_withheld + ca_estimated
 
     # Remaining quarterly payments needed
@@ -61,6 +62,7 @@ def calculate_safe_harbor(inputs, federal_result, ca_result):
     return {
         "safe_harbor_federal": round(safe_harbor_federal, 2),
         "safe_harbor_ca": round(safe_harbor_ca, 2),
+        "excess_ss": round(excess_ss, 2),
         "federal_paid_ytd": round(fed_paid_ytd, 2),
         "ca_paid_ytd": round(ca_paid_ytd, 2),
         "federal_balance_due": federal_balance_due,

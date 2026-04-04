@@ -21,6 +21,17 @@
     <input name="date" type="date" class="form-control" required
            value="{{ record.date.isoformat() if record else '' }}">
   </div>
+  {% if not record %}
+  <div class="mb-3" id="recurring-row" style="display:none">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="recurring" value="1" id="recurring">
+      <label class="form-check-label" for="recurring">
+        Monthly Recurring
+        <span class="text-muted small d-block">Creates one deduction per month on the same day of the month.</span>
+      </label>
+    </div>
+  </div>
+  {% endif %}
   <div class="mb-3">
     <label class="form-label">Amount ($)</label>
     <input name="amount" type="number" step="0.01" min="0" class="form-control" required
@@ -33,4 +44,22 @@
   <button type="submit" class="btn btn-primary">Save</button>
   <a href="{{ url_for('deductions.itemized_list', year=tax_year.year) }}" class="btn btn-secondary ms-2">Cancel</a>
 </form>
+{% if not record %}
+<script>
+  (function () {
+    var sel = document.querySelector('select[name="category"]');
+    var row = document.getElementById('recurring-row');
+    function toggle() {
+      if (sel.value === 'charitable') {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+        document.getElementById('recurring').checked = false;
+      }
+    }
+    sel.addEventListener('change', toggle);
+    toggle();
+  })();
+</script>
+{% endif %}
 {% endblock %}
