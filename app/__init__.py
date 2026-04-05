@@ -104,16 +104,21 @@ def create_app(config_name="default"):
         if not app.testing:
             from app.models import User
             from werkzeug.security import generate_password_hash
-            from sqlalchemy.exc import IntegrityError
-            if not User.query.filter_by(username="mike").first():
-                try:
-                    default_user = User(
-                        username="mike",
-                        password_hash=generate_password_hash("change-me-now"),
-                    )
-                    db.session.add(default_user)
-                    db.session.commit()
-                except IntegrityError:
-                    db.session.rollback()
+            from sqlalchemy.exc import IntegrityError, OperationalError
+            try:
+                if not User.query.filter_by(username="mike").first():
+                    try:
+                        default_user = User(
+                            username="mike",
+                            password_hash=generate_password_hash("change-me-now"),
+                        )
+                        db.session.add(default_user)
+                        db.session.commit()
+                    except IntegrityError:
+                        db.session.rollback()
+            except OperationalError:
+                # Schema is mid-migration (e.g. during `flask db upgrade`).
+                # Skip seeding — it will succeed on the next normal startup.
+                db.session.rollback()
 
     return app
