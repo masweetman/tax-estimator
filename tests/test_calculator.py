@@ -359,13 +359,14 @@ class TestSafeHarbor:
 
     def test_ca_quarterly_net_of_withholding(self):
         """Each CA installment is reduced by 25% of annual CA withholding."""
+        # prior=5000 < 90% of current CA tax → safe_harbor_ca=5000; ca_paid_ytd=2000 < 5000
         result = _calc(
-            prior_year_ca_tax=4_000,
+            prior_year_ca_tax=5_000,
             prior_year_agi=100_000,
-            ca_income_withheld=4_000,
+            ca_income_withheld=2_000,
         )
         sh = result["safe_harbor_ca"]
-        wh_per_q = 4_000 * 0.25
+        wh_per_q = 2_000 * 0.25
         assert result["ca_q1_payment"] == pytest.approx(max(0, sh * 0.30 - wh_per_q), abs=0.02)
         assert result["ca_q2_payment"] == pytest.approx(max(0, sh * 0.40 - wh_per_q), abs=0.02)
 
@@ -387,6 +388,20 @@ class TestSafeHarbor:
         )
         # quarterly recommended should be 0 (can't be negative)
         assert result["quarterly_federal_recommended"] == 0
+
+    def test_ca_quarterly_zero_when_safe_harbor_covered(self):
+        """All CA quarterly amounts are $0 when ca_paid_ytd >= safe_harbor_ca."""
+        result = _calc(
+            prior_year_ca_tax=4_000,
+            prior_year_agi=100_000,
+            ca_income_withheld=10_000,  # withholding alone exceeds any safe harbor
+            ca_estimated_paid=0,
+        )
+        assert result["ca_q1_payment"] == 0.0
+        assert result["ca_q2_payment"] == 0.0
+        assert result["ca_q3_payment"] == 0.0
+        assert result["ca_q4_payment"] == 0.0
+        assert result["quarterly_ca_recommended"] == 0.0
 
 
 # ===========================================================================
