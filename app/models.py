@@ -16,6 +16,8 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     person1_name = db.Column(db.String(64), nullable=True)
     person2_name = db.Column(db.String(64), nullable=True)
+    totp_secret = db.Column(db.String(64), nullable=True)
+    totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
 
     @property
     def display_person1(self):

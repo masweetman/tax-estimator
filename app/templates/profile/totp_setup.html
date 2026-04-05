@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Set Up Two-Factor Authentication — Tax Estimator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <h1 class="h3 mb-4"><i class="bi bi-shield-lock me-2"></i>Set Up Two-Factor Authentication</h1>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-qr-code me-2"></i>Step 1 — Scan QR Code
+      </div>
+      <div class="card-body text-center">
+        <p class="text-muted small mb-3">
+          Open <strong>1Password</strong> (or any TOTP authenticator app), choose
+          <em>Add a new item → One-Time Password</em>, and scan this QR code.
+        </p>
+        <img src="{{ qr_data_uri }}" alt="TOTP QR Code" class="img-fluid mb-3" style="max-width:220px">
+        <p class="text-muted small">
+          Can't scan? Enter this secret manually:<br>
+          <code class="user-select-all">{{ totp_secret }}</code>
+        </p>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-123 me-2"></i>Step 2 — Confirm the Code
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          After scanning, enter the 6-digit code shown in your authenticator app to confirm the setup.
+        </p>
+        <form method="post" action="{{ url_for('profile.totp_enable') }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label for="totp_code" class="form-label">Verification Code</label>
+            <input type="text" id="totp_code" name="totp_code" class="form-control text-center fs-4"
+                   inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                   autocomplete="one-time-code" required autofocus
+                   placeholder="000000">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-lg me-1"></i>Enable Two-Factor Authentication
+            </button>
+            <a href="{{ url_for('profile.profile') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

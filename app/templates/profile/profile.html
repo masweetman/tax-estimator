@@ -37,6 +37,48 @@
       </div>
     </div>
 
+    <!-- Two-Factor Authentication -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-shield-lock me-2"></i>Two-Factor Authentication
+      </div>
+      <div class="card-body">
+        {% if current_user.totp_enabled %}
+          <p class="text-success mb-3">
+            <i class="bi bi-check-circle-fill me-1"></i>
+            Two-factor authentication is <strong>enabled</strong>.
+          </p>
+          <p class="text-muted small mb-3">
+            You will be prompted for a 6-digit code from your authenticator app each time you log in.
+            To disable, enter your current password below.
+          </p>
+          <form method="post" action="{{ url_for('profile.totp_disable') }}" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+              <label class="form-label">Current Password</label>
+              <input type="password" name="password" class="form-control" required
+                     autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-shield-x me-1"></i>Disable Two-Factor Authentication
+            </button>
+          </form>
+        {% else %}
+          <p class="text-muted mb-3">
+            <i class="bi bi-shield me-1"></i>
+            Two-factor authentication is <strong>not enabled</strong>.
+          </p>
+          <p class="text-muted small mb-3">
+            Protect your account by requiring a time-based one-time password from an authenticator app
+            such as <strong>1Password</strong> every time you log in.
+          </p>
+          <a href="{{ url_for('profile.totp_setup') }}" class="btn btn-outline-primary">
+            <i class="bi bi-shield-check me-1"></i>Set Up Two-Factor Authentication
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Family Members -->
     <div class="card shadow-sm">
       <div class="card-header fw-semibold">
