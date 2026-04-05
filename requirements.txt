@@ -9,3 +9,5 @@ Werkzeug>=3.1,<4
 WTForms>=3.2,<4
 email-validator>=2.2,<3
 pdfplumber>=0.11,<1
+pyotp>=2.9
+qrcode[pil]>=7.4

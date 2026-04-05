@@ -70,6 +70,43 @@
       </div>
     </div>
 
+    <!-- Two-Factor Authentication -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-shield-lock me-2"></i>Two-Factor Authentication
+      </div>
+      <div class="card-body">
+        {% if current_user.totp_enabled %}
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge bg-success fs-6">
+                <i class="bi bi-check-lg me-1"></i>Enabled
+              </span>
+              <span class="text-muted small">
+                Your account is protected with an authenticator app.
+              </span>
+            </div>
+            <form method="post" action="{{ url_for('auth.totp_disable') }}"
+                  onsubmit="return confirm('Are you sure you want to disable two-factor authentication?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-shield-x me-1"></i>Disable
+              </button>
+            </form>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-3">
+            Add an extra layer of security by requiring a one-time code from an
+            authenticator app (Google Authenticator, 1Password, Authy, etc.)
+            each time you sign in.
+          </p>
+          <a href="{{ url_for('auth.totp_setup') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-shield-plus me-1"></i>Enable Two-Factor Authentication
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Set Up Two-Factor Authentication — Tax Estimator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-sm-10 col-md-7 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h4 class="card-title mb-1">
+          <i class="bi bi-shield-lock me-2"></i>Set Up Two-Factor Authentication
+        </h4>
+        <p class="text-muted small mb-4">
+          Scan the QR code below with an authenticator app (Google Authenticator,
+          1Password, Authy, etc.), then enter the 6-digit code to confirm.
+        </p>
+
+        <!-- QR code -->
+        <div class="text-center mb-3">
+          <img src="data:image/png;base64,{{ qr_b64 }}"
+               alt="TOTP QR code"
+               class="img-fluid border rounded"
+               style="max-width: 220px;">
+        </div>
+
+        <!-- Manual entry fallback -->
+        <details class="mb-4">
+          <summary class="text-muted small" style="cursor:pointer;">
+            Can't scan? Enter the code manually
+          </summary>
+          <div class="mt-2 p-2 bg-light rounded text-center">
+            <code class="user-select-all fs-6">{{ secret }}</code>
+          </div>
+          <p class="text-muted small mt-1 mb-0">
+            In your app, choose "Enter setup key" and use the code above.
+          </p>
+        </details>
+
+        <!-- Verification form -->
+        <form method="post" action="{{ url_for('auth.totp_setup') }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label for="token" class="form-label">Verification Code</label>
+            <input type="text"
+                   id="token"
+                   name="token"
+                   class="form-control form-control-lg text-center"
+                   inputmode="numeric"
+                   pattern="[0-9]{6}"
+                   maxlength="6"
+                   autocomplete="one-time-code"
+                   placeholder="000000"
+                   required
+                   autofocus>
+            <div class="form-text">Enter the 6-digit code shown in your authenticator app.</div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Enable Two-Factor Authentication
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center mt-3">
+      <a href="{{ url_for('profile.profile') }}" class="text-muted small">Cancel</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
