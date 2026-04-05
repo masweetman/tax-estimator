@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}California Tax Summary – {{ tax_year.year }}{% endblock %}
 
-{% macro money(val) %}${{ "{:,.0f}".format(val|float) }}{% endmacro %}
+{% macro money(val) %}{{ val|currency }}{% endmacro %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">

@@ -1,0 +1,46 @@
+# Instructions for Calculating Estimated Tax Payments (Federal & California)
+
+## Objective
+Calculate the safe harbor requirements and recommended quarterly estimated tax payments for both Federal (IRS) and California (FTB) jurisdictions based on provided financial data.
+
+---
+
+## Part 1: Federal Calculations (Source: IRS Form 1040-ES)
+
+1. **Determine Federal Safe Harbor (Required Annual Payment):**
+   - Calculate 90% of the projected current year's total tax.
+   - Calculate 100% of the total tax shown on the prior year's return.
+   - **High-Income Exception:** If the prior year's Adjusted Gross Income (AGI) was > $150,000 ($75,000 if Married Filing Separately), use 110% of the prior year's tax instead of 100%.
+   - **Safe Harbor Amount:** The smaller of the two results above.
+
+2. **Calculate Quarterly Federal Payments:**
+   - **Total Estimated Tax Due:** [Safe Harbor Amount] minus [Total Expected Federal Withholding and Refundable Credits].
+   - **Quarterly Installment:** Divide the Total Estimated Tax Due by 4.
+   - **Schedule:** 25% due April 15, June 15, Sept 15, and Jan 15.
+
+---
+
+## Part 2: California Calculations (Source: FTB Form 540-ES)
+
+1. **Determine California Safe Harbor (Required Annual Payment):**
+   - **Standard Rule (AGI ≤ $150,000):** Smaller of 90% of current year tax or 100% of prior year tax.
+   - **High Income Rule (AGI > $150,000):** Smaller of 90% of current year tax or 110% of prior year tax.
+   - **Millionaire Exception:** If current year OR prior year AGI is ≥ $1,000,000 ($500,000 if MFS), the taxpayer MUST use 90% of the current year's tax. The prior year safe harbor is not available.
+
+2. **Calculate Quarterly California Payments:**
+   - **Total Estimated Tax Due:** [Safe Harbor Amount] minus [Total Expected CA State Withholding].
+   - **California Weighted Schedule:**
+     - 1st Installment (April 15): 30% of Safe Harbor
+     - 2nd Installment (June 15): 40% of Safe Harbor
+     - 3rd Installment (Sept 15): 0% of Safe Harbor
+     - 4th Installment (Jan 15): 30% of Safe Harbor
+   - **Adjustment for Withholding:** Subtract the applicable portion of annual withholding from each installment. If withholding is even throughout the year, subtract 25% of annual withholding from the 1st, 2nd, and 4th installments.
+
+---
+
+## Required Input Data from User:
+To perform these calculations, ask the user for:
+1. Prior Year AGI and Total Tax.
+2. Estimated Current Year AGI and Total Tax.
+3. Expected Federal and State Withholding for the current year.
+4. Filing Status.

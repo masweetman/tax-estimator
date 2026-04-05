@@ -27,12 +27,12 @@
         <th>Pay Date</th>
         <th>Status</th>
         <th class="text-end">Gross Pay</th>
-        <th class="text-end">Fed Withheld</th>
-        <th class="text-end">State Withheld</th>
+        <th class="text-end d-none d-sm-table-cell">Fed Withheld</th>
+        <th class="text-end d-none d-sm-table-cell">State Withheld</th>
         <th class="text-end">Take-Home</th>
-        <th class="text-end">YTD Gross</th>
-        <th class="text-end">YTD Fed</th>
-        <th class="text-end">YTD Take-Home</th>
+        <th class="text-end d-none d-sm-table-cell">YTD Gross</th>
+        <th class="text-end d-none d-sm-table-cell">YTD Fed</th>
+        <th class="text-end d-none d-sm-table-cell">YTD Take-Home</th>
         <th></th>
       </tr>
     </thead>
@@ -48,13 +48,13 @@
             <span class="badge bg-light text-secondary border">Est.</span>
           {% endif %}
         </td>
-        <td class="text-end">${{ "%.2f"|format(stub.gross_pay) }}</td>
-        <td class="text-end">${{ "%.2f"|format(stub.federal_income_withholding) }}</td>
-        <td class="text-end">${{ "%.2f"|format(stub.state_income_withholding) }}</td>
-        <td class="text-end fw-semibold">${{ "%.2f"|format(stub.take_home_pay) }}</td>
-        <td class="text-end fw-semibold">${{ "%.2f"|format(row.ytd_gross) }}</td>
-        <td class="text-end">${{ "%.2f"|format(row.ytd_federal) }}</td>
-        <td class="text-end fw-semibold">${{ "%.2f"|format(row.ytd_take_home) }}</td>
+        <td class="text-end">{{ stub.gross_pay|currency }}</td>
+        <td class="text-end d-none d-sm-table-cell">{{ stub.federal_income_withholding|currency }}</td>
+        <td class="text-end d-none d-sm-table-cell">{{ stub.state_income_withholding|currency }}</td>
+        <td class="text-end fw-semibold">{{ stub.take_home_pay|currency }}</td>
+        <td class="text-end fw-semibold d-none d-sm-table-cell">{{ row.ytd_gross|currency }}</td>
+        <td class="text-end d-none d-sm-table-cell">{{ row.ytd_federal|currency }}</td>
+        <td class="text-end fw-semibold d-none d-sm-table-cell">{{ row.ytd_take_home|currency }}</td>
         <td class="text-end">
           <a href="{{ url_for('w2.paystub_import_stub', stub_id=stub.id) }}" class="btn btn-sm btn-outline-secondary" title="Import PDF">
             <i class="bi bi-file-earmark-arrow-up"></i>

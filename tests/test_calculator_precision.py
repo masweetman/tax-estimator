@@ -476,34 +476,43 @@ class TestCaliforniaPrecision:
 class TestSafeHarborPrecision:
 
     def test_safe_harbor_federal_100pct_below_150k_agi(self):
-        """Prior-year AGI ≤ $150k → safe harbor = 100% of prior-year tax."""
-        result = calc(prior_year_federal_tax=18_000, prior_year_agi=140_000)
+        """Prior-year AGI ≤ $150k → 100% multiplier on prior; prior wins when smaller."""
+        # With w2=200k, 90% of current ≈ 24,505 > prior=18,000 → prior wins
+        result = calc(w2_wages=200_000, prior_year_federal_tax=18_000, prior_year_agi=140_000)
         assert result["safe_harbor_federal"] == pytest.approx(18_000.0)
+        assert result["federal_safe_harbor_prior"] == pytest.approx(18_000.0)
 
     def test_safe_harbor_federal_110pct_above_150k_agi(self):
-        """Prior-year AGI > $150k → safe harbor = 110% of prior-year tax."""
-        result = calc(prior_year_federal_tax=24_000, prior_year_agi=160_000)
+        """Prior-year AGI > $150k → 110% multiplier on prior; prior wins when smaller."""
+        # 110% × 24,000 = 26,400; with w2=250k, 90% of current ≈ 34,645 > 26,400 → prior wins
+        result = calc(w2_wages=250_000, prior_year_federal_tax=24_000, prior_year_agi=160_000)
         assert result["safe_harbor_federal"] == pytest.approx(26_400.0)  # 24,000 × 1.10
+        assert result["federal_safe_harbor_prior"] == pytest.approx(26_400.0)
 
     def test_safe_harbor_federal_at_exactly_150k_threshold_uses_100pct(self):
         """Prior-year AGI = exactly $150,000 uses 100% (threshold is strictly >)."""
-        result = calc(prior_year_federal_tax=20_000, prior_year_agi=150_000)
+        # w2=200k gives 90% of current ≈ 24,505 > 20,000 → prior wins in both cases
+        result = calc(w2_wages=200_000, prior_year_federal_tax=20_000, prior_year_agi=150_000)
         assert result["safe_harbor_federal"] == pytest.approx(20_000.0)
 
     def test_safe_harbor_ca_equals_100pct_of_prior_year_ca_tax(self):
-        """CA safe harbor = exactly 100% of prior-year CA tax."""
-        result = calc(prior_year_ca_tax=7_500)
-        assert result["safe_harbor_ca"] == pytest.approx(7_500.0)
+        """CA: prior-year AGI ≤ $150k → 100% multiplier; prior wins when smaller."""
+        # w2=200k gives CA 90% of current ≈ 9,479; prior=8,000 < 9,479 → prior wins
+        result = calc(w2_wages=200_000, prior_year_ca_tax=8_000, prior_year_agi=0)
+        assert result["safe_harbor_ca"] == pytest.approx(8_000.0)
+        assert result["ca_safe_harbor_prior"] == pytest.approx(8_000.0)
 
     def test_quarterly_federal_exact_math(self):
         """Verify the quarterly recommendation arithmetic.
         prior_year_federal_tax=32,000; prior_year_agi=200,000 (>150k → 110%)
         safe_harbor = 32,000 × 1.10 = 35,200
-        wthheld+estimated = 20,000+4,000 = 24,000
+        w2=300k → 90% of current ≈ 45,445 > 35,200; prior wins
+        withheld+estimated = 20,000+4,000 = 24,000
         remaining = 35,200 - 24,000 = 11,200
         quarterly = 11,200 / 4 = 2,800.00
         """
         result = calc(
+            w2_wages=300_000,
             prior_year_federal_tax=32_000,
             prior_year_agi=200_000,
             federal_income_withheld=20_000,
@@ -513,14 +522,28 @@ class TestSafeHarborPrecision:
         assert result["quarterly_federal_recommended"] == pytest.approx(2_800.0)
 
     def test_quarterly_ca_exact_math(self):
-        """CA quarterly payment arithmetic."""
+        """CA quarterly payment uses FTB 30/40/0/30 weighted schedule, net of withholding.
+        prior_year_ca_tax=8,000; w2=200k → 90% current ≈ 9,479 > 8,000 → prior wins
+        safe_harbor_ca = 8,000
+        ca_withheld=5,000 → 25% per quarter = 1,250
+        Q1 = 30% × 8,000 − 1,250 = 2,400 − 1,250 = 1,150
+        Q2 = 40% × 8,000 − 1,250 = 3,200 − 1,250 = 1,950  ← quarterly_ca_recommended
+        Q3 = 0 (no CA September installment)
+        Q4 = 30% × 8,000 − 1,250 = 1,150
+        """
         result = calc(
+            w2_wages=200_000,
             prior_year_ca_tax=8_000,
+            prior_year_agi=0,
             ca_income_withheld=5_000,
             ca_estimated_paid=1_000,
         )
-        # safe_harbor_ca = 8000; paid = 6000; remaining = 2000; quarterly = 500
-        assert result["quarterly_ca_recommended"] == pytest.approx(500.0)
+        assert result["safe_harbor_ca"] == pytest.approx(8_000.0)
+        assert result["ca_q1_payment"] == pytest.approx(1_150.0)
+        assert result["ca_q2_payment"] == pytest.approx(1_950.0)
+        assert result["ca_q3_payment"] == 0.0
+        assert result["ca_q4_payment"] == pytest.approx(1_150.0)
+        assert result["quarterly_ca_recommended"] == pytest.approx(1_950.0)
 
     def test_quarterly_zero_when_payments_exceed_safe_harbor(self):
         """If payments already satisfy safe harbor, recommended quarterly = 0."""
@@ -677,8 +700,9 @@ class TestEdgeCases:
 
     def test_prior_year_agi_at_exactly_150k_threshold(self):
         """AGI = exactly $150,000 uses 100% safe harbor multiplier (not 110%)."""
-        result_at = calc(prior_year_federal_tax=20_000, prior_year_agi=150_000)
-        result_over = calc(prior_year_federal_tax=20_000, prior_year_agi=150_001)
+        # w2=200k gives 90% of current ≈ 24,505 — both prior values below that → prior wins
+        result_at = calc(w2_wages=200_000, prior_year_federal_tax=20_000, prior_year_agi=150_000)
+        result_over = calc(w2_wages=200_000, prior_year_federal_tax=20_000, prior_year_agi=150_001)
         assert result_at["safe_harbor_federal"] == pytest.approx(20_000.0)
         assert result_over["safe_harbor_federal"] == pytest.approx(22_000.0)
 

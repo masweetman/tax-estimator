@@ -57,6 +57,13 @@ def create_app(config_name="default"):
     app.register_blueprint(federal_summary_bp)
     app.register_blueprint(ca_summary_bp)
 
+    @app.template_filter("currency")
+    def currency_filter(value):
+        try:
+            return f"${round(float(value or 0)):,}"
+        except (TypeError, ValueError):
+            return "$0"
+
     @app.context_processor
     def inject_person_names():
         from flask_login import current_user

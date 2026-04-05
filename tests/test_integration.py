@@ -789,8 +789,10 @@ class TestUserStorySafeHarborQuarterly:
             "prior_year_federal_tax": 0, "prior_year_agi": 0,
             "qualifying_children": 0,
         })
-        # safe_harbor_ca = 12000; paid = 4000; remaining = 8000; quarterly = 2000
-        assert result["quarterly_ca_recommended"] == pytest.approx(2_000.0)
+        # With w2=200k, CA 90% of current ≈ 9,479 < prior=12,000 → safe_harbor_ca = 9,479.02
+        # quarterly_ca_recommended = Q2 = 40% × 9,479.02 − 25% × 4,000 = 3,791.61 − 1,000 = 2,791.61
+        assert result["safe_harbor_ca"] == pytest.approx(result["ca_safe_harbor_90pct"])
+        assert result["quarterly_ca_recommended"] == pytest.approx(result["ca_q2_payment"])
 
 
 class TestUserStoryCapitalGainsPlanning:

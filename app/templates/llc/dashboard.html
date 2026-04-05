@@ -58,7 +58,7 @@
               </td>
               {% endfor %}
               <td class="text-end table-secondary fw-semibold {{ 'text-danger' if is_deduction else 'text-success' }}" id="row-total-{{ field }}">
-                ${{ "{:,.2f}".format(pl_totals.get(field, 0)) }}
+                {{ pl_totals.get(field, 0)|currency }}
               </td>
             </tr>
             {% endfor %}
@@ -70,7 +70,7 @@
               <td class="text-end fw-semibold" id="col-net-{{ q }}">—</td>
               {% endfor %}
               <td class="text-end fw-bold" id="grid-net-total">
-                ${{ "{:,.2f}".format(grid_total_income - grid_total_deductions) }}
+                {{ (grid_total_income - grid_total_deductions)|currency }}
               </td>
             </tr>
           </tfoot>
@@ -123,20 +123,20 @@
   <div class="col-sm-6 col-lg-3">
     <div class="card text-bg-light h-100"><div class="card-body py-3">
       <div class="text-muted small">Direct Expenses</div>
-      <div class="fs-5 fw-semibold text-danger">${{ "{:,.2f}".format(total_expenses) }}</div>
+      <div class="fs-5 fw-semibold text-danger">{{ total_expenses|currency }}</div>
     </div></div>
   </div>
   <div class="col-sm-6 col-lg-3">
     <div class="card text-bg-light h-100"><div class="card-body py-3">
       <div class="text-muted small">Mileage Deduction</div>
-      <div class="fs-5 fw-semibold text-danger">${{ "{:,.2f}".format(mileage_deduction) }}</div>
+      <div class="fs-5 fw-semibold text-danger">{{ mileage_deduction|currency }}</div>
       <div class="small text-muted">{{ "%.1f"|format(total_miles) }} mi @ ${{ "%.3f"|format(mileage_rate) }}</div>
     </div></div>
   </div>
   <div class="col-sm-6 col-lg-3">
     <div class="card {{ 'text-bg-success text-white' if net_profit >= 0 else 'text-bg-danger text-white' }} h-100"><div class="card-body py-3">
       <div class="small">Net Profit / Loss</div>
-      <div class="fs-5 fw-semibold">${{ "{:,.2f}".format(net_profit) }}</div>
+      <div class="fs-5 fw-semibold">{{ net_profit|currency }}</div>
     </div></div>
   </div>
 </div>
@@ -154,12 +154,12 @@
       <td>{{ r.date }}</td>
       <td>{{ r.client or '—' }}</td>
       <td>{{ r.category|replace('_',' ')|title }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">{{ r.amount|currency }}</td>
       <td><a href="{{ url_for('se.income_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0">Edit</a></td>
     </tr>
     {% endfor %}
   </tbody>
-  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">${{ "%.2f"|format(total_income) }}</td><td></td></tr></tfoot>
+  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">{{ total_income|currency }}</td><td></td></tr></tfoot>
 </table>
 {% else %}
 <p class="text-muted mb-4">No income associated with this LLC.
@@ -180,12 +180,12 @@
       <td>{{ r.date }}</td>
       <td>{{ r.description }}</td>
       <td>{{ r.category|replace('_',' ')|title }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">{{ r.amount|currency }}</td>
       <td><a href="{{ url_for('se.expense_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0">Edit</a></td>
     </tr>
     {% endfor %}
   </tbody>
-  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">${{ "%.2f"|format(total_expenses) }}</td><td></td></tr></tfoot>
+  <tfoot><tr class="fw-bold"><td colspan="3">Total</td><td class="text-end">{{ total_expenses|currency }}</td><td></td></tr></tfoot>
 </table>
 {% else %}
 <p class="text-muted mb-4">No expenses associated with this LLC.
@@ -213,7 +213,7 @@
   </tbody>
   <tfoot><tr class="fw-bold">
     <td colspan="3">Deduction @ ${{ "%.3f"|format(mileage_rate) }}/mi</td>
-    <td class="text-end">${{ "%.2f"|format(mileage_deduction) }}</td><td></td>
+    <td class="text-end">{{ mileage_deduction|currency }}</td><td></td>
   </tr></tfoot>
 </table>
 {% else %}
@@ -247,15 +247,15 @@
         {% for line in ho_lines %}
         <tr>
           <td>{{ line.label }}</td>
-          <td class="text-end">${{ "%.2f"|format(line.total) }}</td>
-          <td class="text-end text-danger">${{ "%.2f"|format(line.business) }}</td>
-          <td class="text-end text-info">{% if line.personal > 0 %} ${{ "%.2f"|format(line.personal) }}{% else %}—{% endif %}</td>
+          <td class="text-end">{{ line.total|currency }}</td>
+          <td class="text-end text-danger">{{ line.business|currency }}</td>
+          <td class="text-end text-info">{% if line.personal > 0 %} {{ line.personal|currency }}{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot><tr class="fw-bold">
         <td colspan="2">Total Business Deduction</td>
-        <td class="text-end text-danger">${{ "%.2f"|format(ho_business_total) }}</td>
+        <td class="text-end text-danger">{{ ho_business_total|currency }}</td>
         <td></td>
       </tr></tfoot>
     </table>

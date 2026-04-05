@@ -230,6 +230,8 @@ SAFE_HARBOR_HIGH_INCOME_THRESHOLD = 150_000  # prior-year AGI above this → 110
 SAFE_HARBOR_LOW_MULTIPLIER = 1.00
 SAFE_HARBOR_HIGH_MULTIPLIER = 1.10
 CA_SAFE_HARBOR_CURRENT_YEAR_PCT = 0.90  # 90% of current-year CA tax
+FEDERAL_SAFE_HARBOR_CURRENT_YEAR_PCT = 0.90  # 90% of current-year federal tax
+CA_MILLIONAIRE_THRESHOLD = 1_000_000  # CA millionaire exception: must use 90% of current year
 
 # ---------------------------------------------------------------------------
 # Solo 401(k) Contribution Limits

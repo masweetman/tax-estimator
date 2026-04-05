@@ -18,7 +18,7 @@
   <div class="col-sm-6 col-lg-3">
     <div class="card h-100"><div class="card-body py-3">
       <div class="text-muted small">W-2 Wages</div>
-      <div class="fs-5 fw-semibold">${{ "{:,.0f}".format(inputs.w2_wages) }}</div>
+      <div class="fs-5 fw-semibold">{{ inputs.w2_wages|currency }}</div>
       {% set employer_names = tax_year.employers|map(attribute='name')|list %}
       {% if employer_names %}<div class="text-muted small mt-1">{{ employer_names|join(', ') }}</div>{% endif %}
     </div></div>
@@ -26,19 +26,19 @@
   <div class="col-sm-6 col-lg-3">
     <div class="card h-100"><div class="card-body py-3">
       <div class="text-muted small">Self-Employment Net</div>
-      <div class="fs-5 fw-semibold">${{ "{:,.0f}".format(inputs.se_net_income_p1 + inputs.se_net_income_p2) }}</div>
+      <div class="fs-5 fw-semibold">{{ (inputs.se_net_income_p1 + inputs.se_net_income_p2)|currency }}</div>
     </div></div>
   </div>
   <div class="col-sm-6 col-lg-3">
     <div class="card h-100"><div class="card-body py-3">
       <div class="text-muted small">Capital Gains (LT / ST)</div>
-      <div class="fs-5 fw-semibold">${{ "{:,.0f}".format(inputs.long_term_capital_gains) }} / ${{ "{:,.0f}".format(inputs.short_term_capital_gains) }}</div>
+      <div class="fs-5 fw-semibold">{{ inputs.long_term_capital_gains|currency }} / {{ inputs.short_term_capital_gains|currency }}</div>
     </div></div>
   </div>
   <div class="col-sm-6 col-lg-3">
     <div class="card h-100"><div class="card-body py-3">
       <div class="text-muted small">Federal AGI</div>
-      <div class="fs-5 fw-semibold">${{ "{:,.0f}".format(result.federal_agi) }}</div>
+      <div class="fs-5 fw-semibold">{{ result.federal_agi|currency }}</div>
     </div></div>
   </div>
 </div>
@@ -66,18 +66,18 @@
       <div class="card-header fw-semibold">Federal Tax Estimate</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0"><tbody>
-          <tr><td>Total Income</td><td class="text-end">${{ "{:,.0f}".format(f_total_income) }}</td></tr>
-          <tr><td>Total Adjustments</td><td class="text-end">${{ "{:,.0f}".format(f_total_adj) }}</td></tr>
-          <tr><td>Adjusted Gross Income</td><td class="text-end">${{ "{:,.0f}".format(result.federal_agi) }}</td></tr>
-          <tr><td>Deductions</td><td class="text-end">${{ "{:,.0f}".format(f_total_deductions) }}</td></tr>
-          <tr><td>Taxable Income</td><td class="text-end">${{ "{:,.0f}".format(result.federal_taxable_income) }}</td></tr>
-          <tr><td>Total Tax</td><td class="text-end">${{ "{:,.0f}".format(f_total_tax) }}</td></tr>
-          <tr><td>Total Credits</td><td class="text-end">${{ "{:,.0f}".format(f_total_credits) }}</td></tr>
-          <tr><td>Total Payments</td><td class="text-end">${{ "{:,.0f}".format(f_total_payments) }}</td></tr>
+          <tr><td>Total Income</td><td class="text-end">{{ f_total_income|currency }}</td></tr>
+          <tr><td>Total Adjustments</td><td class="text-end">{{ f_total_adj|currency }}</td></tr>
+          <tr><td>Adjusted Gross Income</td><td class="text-end">{{ result.federal_agi|currency }}</td></tr>
+          <tr><td>Deductions</td><td class="text-end">{{ f_total_deductions|currency }}</td></tr>
+          <tr><td>Taxable Income</td><td class="text-end">{{ result.federal_taxable_income|currency }}</td></tr>
+          <tr><td>Total Tax</td><td class="text-end">{{ f_total_tax|currency }}</td></tr>
+          <tr><td>Total Credits</td><td class="text-end">{{ f_total_credits|currency }}</td></tr>
+          <tr><td>Total Payments</td><td class="text-end">{{ f_total_payments|currency }}</td></tr>
           {% if f_balance <= 0 %}
-          <tr class="table-success"><td><strong>Total Refund</strong></td><td class="text-end"><strong>${{ "{:,.0f}".format(-f_balance) }}</strong></td></tr>
+          <tr class="table-success"><td><strong>Total Refund</strong></td><td class="text-end"><strong>{{ (-f_balance)|currency }}</strong></td></tr>
           {% else %}
-          <tr class="table-warning"><td><strong>Total Amount Owed</strong></td><td class="text-end"><strong>${{ "{:,.0f}".format(f_balance) }}</strong></td></tr>
+          <tr class="table-warning"><td><strong>Total Amount Owed</strong></td><td class="text-end"><strong>{{ f_balance|currency }}</strong></td></tr>
           {% endif %}
           <tr><td class="text-muted small">Effective Rate</td><td class="text-end text-muted small">{{ "%.1f"|format(result.effective_federal_rate * 100) }}%</td></tr>
           <tr><td class="text-muted small">Marginal Rate</td><td class="text-end text-muted small">{{ "%.0f"|format(result.marginal_federal_rate * 100) }}%</td></tr>
@@ -92,15 +92,15 @@
       <div class="card-header fw-semibold">California Tax Estimate</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0"><tbody>
-          <tr><td>California AGI</td><td class="text-end">${{ "{:,.0f}".format(result.ca_agi) }}</td></tr>
-          <tr><td>Deductions <span class="text-muted small">({{ result.ca_deduction_type }})</span></td><td class="text-end">${{ "{:,.0f}".format(result.ca_deduction_amount) }}</td></tr>
-          <tr><td>California Taxable Income</td><td class="text-end">${{ "{:,.0f}".format(result.ca_taxable_income) }}</td></tr>
-          <tr><td>Total California Tax</td><td class="text-end">${{ "{:,.0f}".format(result.ca_income_tax) }}</td></tr>
-          <tr><td>Payments &amp; Refundable Credits</td><td class="text-end">${{ "{:,.0f}".format(ca_payments) }}</td></tr>
+          <tr><td>California AGI</td><td class="text-end">{{ result.ca_agi|currency }}</td></tr>
+          <tr><td>Deductions <span class="text-muted small">({{ result.ca_deduction_type }})</span></td><td class="text-end">{{ result.ca_deduction_amount|currency }}</td></tr>
+          <tr><td>California Taxable Income</td><td class="text-end">{{ result.ca_taxable_income|currency }}</td></tr>
+          <tr><td>Total California Tax</td><td class="text-end">{{ result.ca_income_tax|currency }}</td></tr>
+          <tr><td>Payments &amp; Refundable Credits</td><td class="text-end">{{ ca_payments|currency }}</td></tr>
           {% if ca_balance <= 0 %}
-          <tr class="table-success"><td><strong>Total California Refund</strong></td><td class="text-end"><strong>${{ "{:,.0f}".format(-ca_balance) }}</strong></td></tr>
+          <tr class="table-success"><td><strong>Total California Refund</strong></td><td class="text-end"><strong>{{ (-ca_balance)|currency }}</strong></td></tr>
           {% else %}
-          <tr class="table-warning"><td><strong>Total Amount Owed to California</strong></td><td class="text-end"><strong>${{ "{:,.0f}".format(ca_balance) }}</strong></td></tr>
+          <tr class="table-warning"><td><strong>Total Amount Owed to California</strong></td><td class="text-end"><strong>{{ ca_balance|currency }}</strong></td></tr>
           {% endif %}
         </tbody></table>
       </div>
@@ -110,16 +110,128 @@
 
 <h5 class="text-uppercase text-muted small mb-2">Safe Harbor &amp; Payments</h5>
 <div class="row g-3 mb-4">
+  {# Federal safe harbor breakdown card #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">Federal Safe Harbor</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0"><tbody>
+          <tr><td>Current Year Tax</td><td class="text-end">{{ result.federal_total_tax|currency }}</td></tr>
+          <tr><td>90% of Current Year</td><td class="text-end">{{ result.federal_safe_harbor_90pct|currency }}</td></tr>
+          <tr>
+            <td>
+              Prior Year Basis
+              {% if result.federal_safe_harbor_prior == result.safe_harbor_federal and result.federal_safe_harbor_prior < result.federal_safe_harbor_90pct %}
+              <span class="badge bg-secondary ms-1">used</span>
+              {% endif %}
+              {% if inputs.prior_year_agi > 150000 %}
+              <span class="text-muted small">(110%)</span>
+              {% else %}
+              <span class="text-muted small">(100%)</span>
+              {% endif %}
+            </td>
+            <td class="text-end">{{ result.federal_safe_harbor_prior|currency }}</td>
+          </tr>
+          <tr class="table-info">
+            <td><strong>Safe Harbor Required</strong> <span class="text-muted small">(smaller of above)</span></td>
+            <td class="text-end"><strong>{{ result.safe_harbor_federal|currency }}</strong></td>
+          </tr>
+          <tr><td>Paid YTD (W/H + Est. + Excess SS)</td><td class="text-end">{{ result.federal_paid_ytd|currency }}</td></tr>
+          {% set fed_sh_remaining = [0, result.safe_harbor_federal - result.federal_paid_ytd] | max %}
+          <tr>
+            <td>Safe Harbor Remaining</td>
+            <td class="text-end {% if fed_sh_remaining == 0 %}text-success{% else %}text-warning{% endif %}">
+              {{ fed_sh_remaining|currency }}
+            </td>
+          </tr>
+          <tr class="table-light">
+            <td class="text-muted small">Quarterly Payment (÷ 4)</td>
+            <td class="text-end text-muted small">{{ result.quarterly_federal_recommended|currency }}</td>
+          </tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  {# California safe harbor breakdown card #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">California Safe Harbor</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0"><tbody>
+          <tr><td>Current Year CA Tax</td><td class="text-end">{{ result.ca_income_tax|currency }}</td></tr>
+          <tr><td>90% of Current Year</td><td class="text-end">{{ result.ca_safe_harbor_90pct|currency }}</td></tr>
+          {% if result.ca_millionaire_exception %}
+          <tr class="table-warning">
+            <td colspan="2" class="small"><i class="bi bi-exclamation-triangle me-1"></i>Millionaire Exception — prior-year safe harbor not available. Must use 90% of current year.</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td>
+              Prior Year Basis
+              {% if result.ca_safe_harbor_prior == result.safe_harbor_ca and result.ca_safe_harbor_prior < result.ca_safe_harbor_90pct %}
+              <span class="badge bg-secondary ms-1">used</span>
+              {% endif %}
+              {% if inputs.prior_year_agi > 150000 %}
+              <span class="text-muted small">(110%)</span>
+              {% else %}
+              <span class="text-muted small">(100%)</span>
+              {% endif %}
+            </td>
+            <td class="text-end">{{ result.ca_safe_harbor_prior|currency }}</td>
+          </tr>
+          {% endif %}
+          <tr class="table-info">
+            <td><strong>Safe Harbor Required</strong> <span class="text-muted small">(smaller of above)</span></td>
+            <td class="text-end"><strong>{{ result.safe_harbor_ca|currency }}</strong></td>
+          </tr>
+          <tr><td>Paid YTD (W/H + Est.)</td><td class="text-end">{{ result.ca_paid_ytd|currency }}</td></tr>
+          {% set ca_sh_remaining = [0, result.safe_harbor_ca - result.ca_paid_ytd] | max %}
+          <tr>
+            <td>Safe Harbor Remaining</td>
+            <td class="text-end {% if ca_sh_remaining == 0 %}text-success{% else %}text-warning{% endif %}">
+              {{ ca_sh_remaining|currency }}
+            </td>
+          </tr>
+        </tbody></table>
+        <div class="px-3 pt-2 pb-3">
+          <div class="text-muted small fw-semibold mb-1">Quarterly Schedule (FTB weighted, net of W/H)</div>
+          <table class="table table-sm table-bordered mb-0 small"><thead class="table-light">
+            <tr><th>Quarter</th><th>Due</th><th class="text-end">Amount</th></tr>
+          </thead><tbody>
+            <tr><td>Q1</td><td>Apr 15</td><td class="text-end">{{ result.ca_q1_payment|currency }}</td></tr>
+            <tr><td>Q2</td><td>Jun 15</td><td class="text-end">{{ result.ca_q2_payment|currency }}</td></tr>
+            <tr class="text-muted"><td>Q3</td><td>Sep 15</td><td class="text-end">—</td></tr>
+            <tr><td>Q4</td><td>Jan 15</td><td class="text-end">{{ result.ca_q4_payment|currency }}</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-{% if result.quarterly_federal_recommended > 0 or result.quarterly_ca_recommended > 0 %}
+{% set any_fed_due = result.quarterly_federal_recommended > 0 %}
+{% set any_ca_due  = result.ca_q1_payment > 0 or result.ca_q2_payment > 0 or result.ca_q4_payment > 0 %}
+{% if any_fed_due or any_ca_due %}
 <div class="alert alert-primary d-flex gap-3 align-items-start">
   <i class="bi bi-calendar3 fs-3"></i>
   <div>
     <strong>Quarterly Payment Recommendations</strong><br>
-    {% if result.quarterly_federal_recommended > 0 %}Federal: <strong>${{ "{:,.2f}".format(result.quarterly_federal_recommended) }}/qtr</strong>&nbsp;&nbsp;{% else %}Federal: <span class="text-success">On track</span>&nbsp;&nbsp;{% endif %}
-    {% if result.quarterly_ca_recommended > 0 %}California: <strong>${{ "{:,.2f}".format(result.quarterly_ca_recommended) }}/qtr</strong>{% else %}California: <span class="text-success">On track</span>{% endif %}
-    <div class="text-muted small mt-1">Based on prior-year safe harbor. Due: Apr 15 · Jun 15 · Sep 15 · Jan 15.</div>
+    {% if any_fed_due %}
+      Federal: <strong>{{ result.quarterly_federal_recommended|currency }}/qtr</strong>
+      <span class="text-muted small">(Apr 15 · Jun 15 · Sep 15 · Jan 15)</span>&nbsp;&nbsp;
+    {% else %}
+      Federal: <span class="text-success">On track</span>&nbsp;&nbsp;
+    {% endif %}
+    {% if any_ca_due %}
+      <br>California:
+      Q1 <strong>{{ result.ca_q1_payment|currency }}</strong> ·
+      Q2 <strong>{{ result.ca_q2_payment|currency }}</strong> ·
+      Q4 <strong>{{ result.ca_q4_payment|currency }}</strong>
+      <span class="text-muted small">(Apr 15 · Jun 15 · Jan 15 — no Sep installment)</span>
+    {% else %}
+      California: <span class="text-success">On track</span>
+    {% endif %}
   </div>
 </div>
 {% else %}

@@ -16,34 +16,34 @@
   <div class="card-body py-2">
     <table class="table table-sm mb-1">
       <tbody>
-        <tr><td>Schedule C Net Profit</td><td class="text-end">${{ "{:,.2f}".format(c.net_profit) }}</td></tr>
+        <tr><td>Schedule C Net Profit</td><td class="text-end">{{ c.net_profit|currency }}</td></tr>
         <tr class="text-muted small">
           <td>&nbsp;&nbsp;Net SE Earnings (× 92.35%)</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.net_se_earnings) }}</td>
+          <td class="text-end">{{ c.net_se_earnings|currency }}</td>
         </tr>
         <tr class="text-muted small">
           <td>&nbsp;&nbsp;SE Tax (× 15.3%)</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.se_tax) }}</td>
+          <td class="text-end">{{ c.se_tax|currency }}</td>
         </tr>
         <tr class="text-muted small">
           <td>&nbsp;&nbsp;SE Deductible Half (÷ 2)</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.se_deductible) }}</td>
+          <td class="text-end">{{ c.se_deductible|currency }}</td>
         </tr>
         <tr>
           <td><strong>Net Earned Income (Plan Compensation)</strong></td>
-          <td class="text-end"><strong>${{ "{:,.2f}".format(c.net_earned_income) }}</strong></td>
+          <td class="text-end"><strong>{{ c.net_earned_income|currency }}</strong></td>
         </tr>
         <tr>
-          <td>Max Employee Deferral (≤ ${{ "{:,}".format(c.employee_limit) }})</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.max_employee) }}</td>
+          <td>Max Employee Deferral (≤ {{ c.employee_limit|currency }})</td>
+          <td class="text-end">{{ c.max_employee|currency }}</td>
         </tr>
         <tr>
           <td>Max Employer Contribution (20% of C)</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.max_employer) }}</td>
+          <td class="text-end">{{ c.max_employer|currency }}</td>
         </tr>
         <tr class="table-success fw-bold">
-          <td>Grand Total (≤ ${{ "{:,}".format(c.total_limit) }})</td>
-          <td class="text-end">${{ "{:,.2f}".format(c.grand_total) }}</td>
+          <td>Grand Total (≤ {{ c.total_limit|currency }})</td>
+          <td class="text-end">{{ c.grand_total|currency }}</td>
         </tr>
       </tbody>
     </table>
@@ -73,7 +73,7 @@
         {%- endif -%}
       </td>
       <td>{{ r.llc.name if r.llc else '—' }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">{{ r.amount|currency }}</td>
       <td class="text-end">
         <a href="{{ url_for('payments.retirement_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('payments.retirement_delete', rec_id=r.id) }}" class="d-inline"
@@ -88,7 +88,7 @@
   <tfoot>
     <tr class="fw-bold">
       <td colspan="4">Total</td>
-      <td class="text-end">${{ "%.2f"|format(total) }}</td>
+      <td class="text-end">{{ total|currency }}</td>
       <td></td>
     </tr>
   </tfoot>

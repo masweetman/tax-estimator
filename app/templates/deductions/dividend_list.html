@@ -22,8 +22,8 @@
     {% for r in records %}
     <tr>
       <td>{{ r.payer }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.ordinary_dividends) }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.qualified_dividends) }}</td>
+      <td class="text-end">{{ r.ordinary_dividends|currency }}</td>
+      <td class="text-end">{{ r.qualified_dividends|currency }}</td>
       <td class="text-end">
         <a href="{{ url_for('deductions.dividend_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('deductions.dividend_delete', rec_id=r.id) }}" class="d-inline"
@@ -38,8 +38,8 @@
   <tfoot>
     <tr class="fw-bold">
       <td>Total</td>
-      <td class="text-end">${{ "%.2f"|format(total_ordinary) }}</td>
-      <td class="text-end">${{ "%.2f"|format(total_qualified) }}</td>
+      <td class="text-end">{{ total_ordinary|currency }}</td>
+      <td class="text-end">{{ total_qualified|currency }}</td>
       <td></td>
     </tr>
   </tfoot>

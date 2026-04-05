@@ -12,7 +12,7 @@
 <table class="table table-sm table-striped">
   <thead class="table-dark">
     <tr>
-      <th>Sale Date</th><th>Person</th><th>Description</th><th>Term</th>
+      <th>Sale Date</th><th>Description</th><th>Term</th>
       <th class="text-end">Proceeds</th><th class="text-end">Basis</th>
       <th class="text-end">Gain/Loss</th><th></th>
     </tr>
@@ -21,12 +21,11 @@
     {% for r in records %}
     <tr>
       <td>{{ r.sale_date }}</td>
-      <td>{{ person_display(r.person) }}</td>
       <td>{{ r.description }}</td>
       <td>{{ 'Long' if r.is_long_term else 'Short' }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.proceeds) }}</td>
-      <td class="text-end">${{ "%.2f"|format(r.cost_basis) }}</td>
-      <td class="text-end {% if r.gain < 0 %}text-danger{% endif %}">${{ "%.2f"|format(r.gain) }}</td>
+      <td class="text-end">{{ r.proceeds|currency }}</td>
+      <td class="text-end">{{ r.cost_basis|currency }}</td>
+      <td class="text-end {% if r.gain < 0 %}text-danger{% endif %}">{{ r.gain|currency }}</td>
       <td class="text-end">
         <a href="{{ url_for('deductions.capital_gains_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('deductions.capital_gains_delete', rec_id=r.id) }}" class="d-inline"
@@ -40,12 +39,12 @@
   </tbody>
   <tfoot>
     <tr class="fw-bold">
-      <td colspan="6">Long-term gain total</td>
-      <td class="text-end">${{ "%.2f"|format(total_lt) }}</td><td></td>
+      <td colspan="5">Long-term gain total</td>
+      <td class="text-end">{{ total_lt|currency }}</td><td></td>
     </tr>
     <tr class="fw-bold">
-      <td colspan="6">Short-term gain total</td>
-      <td class="text-end">${{ "%.2f"|format(total_st) }}</td><td></td>
+      <td colspan="5">Short-term gain total</td>
+      <td class="text-end">{{ total_st|currency }}</td><td></td>
     </tr>
   </tfoot>
 </table>

@@ -21,7 +21,7 @@
     <div class="card text-bg-success text-white">
       <div class="card-body py-2">
         <small>Deduction @ ${{ "%.2f"|format(mileage_rate) }}/mi</small>
-        <div class="fs-5 fw-semibold">${{ "%.2f"|format(total_deduction) }}</div>
+        <div class="fs-5 fw-semibold">{{ total_deduction|currency }}</div>
       </div>
     </div>
   </div>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Federal Tax Summary – {{ tax_year.year }}{% endblock %}
 
-{% macro money(val) %}${{ "{:,.0f}".format(val|float) }}{% endmacro %}
+{% macro money(val) %}{{ val|currency }}{% endmacro %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -418,7 +418,7 @@
     <div class="text-muted small mt-2">
       <i class="bi bi-info-circle me-1"></i>
       This is a projection based on data entered in the app. Prior-year column is not yet populated.
-      Qualified dividends (${{ "{:,.0f}".format(inputs.qualified_dividends) }}) are included in
+      Qualified dividends ({{ inputs.qualified_dividends|currency }}) are included in
       Dividend Income and taxed at long-term capital gains rates.
     </div>
   </div>

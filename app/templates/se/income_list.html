@@ -30,10 +30,10 @@
     {% for s in llc_summaries %}
     <tr>
       <td><a href="{{ url_for('llc.llc_dashboard', llc_id=s.llc.id) }}">{{ s.llc.name }}</a></td>
-      <td class="text-end">${{ "%.2f"|format(s.revenue) }}</td>
-      <td class="text-end">${{ "%.2f"|format(s.mileage_deduction) }}</td>
-      <td class="text-end">${{ "%.2f"|format(s.home_office_total) }}</td>
-      <td class="text-end {% if s.net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">${{ "%.2f"|format(s.net_profit) }}</td>
+      <td class="text-end">{{ s.revenue|currency }}</td>
+      <td class="text-end">{{ s.mileage_deduction|currency }}</td>
+      <td class="text-end">{{ s.home_office_total|currency }}</td>
+      <td class="text-end {% if s.net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ s.net_profit|currency }}</td>
       <td class="text-end text-nowrap">
         <a href="{{ url_for('llc.llc_edit', llc_id=s.llc.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('llc.llc_delete', llc_id=s.llc.id) }}" class="d-inline"
@@ -48,10 +48,10 @@
   <tfoot class="fw-bold">
     <tr>
       <td>Total</td>
-      <td class="text-end">${{ "%.2f"|format(llc_summaries|sum(attribute='revenue')) }}</td>
-      <td class="text-end">${{ "%.2f"|format(llc_summaries|sum(attribute='mileage_deduction')) }}</td>
-      <td class="text-end">${{ "%.2f"|format(llc_summaries|sum(attribute='home_office_total')) }}</td>
-      <td class="text-end">${{ "%.2f"|format(llc_summaries|sum(attribute='net_profit')) }}</td>
+      <td class="text-end">{{ llc_summaries|sum(attribute='revenue')|currency }}</td>
+      <td class="text-end">{{ llc_summaries|sum(attribute='mileage_deduction')|currency }}</td>
+      <td class="text-end">{{ llc_summaries|sum(attribute='home_office_total')|currency }}</td>
+      <td class="text-end">{{ llc_summaries|sum(attribute='net_profit')|currency }}</td>
       <td></td>
     </tr>
   </tfoot>
@@ -74,7 +74,7 @@
       <td>{{ r.client or '—' }}</td>
       <td>{{ r.category }}</td>
       <td>{% if r.llc %}<a href="{{ url_for('llc.llc_dashboard', llc_id=r.llc.id) }}">{{ r.llc.name }}</a>{% else %}—{% endif %}</td>
-      <td class="text-end">${{ "%.2f"|format(r.amount) }}</td>
+      <td class="text-end">{{ r.amount|currency }}</td>
       <td class="text-end">
         <a href="{{ url_for('se.income_edit', rec_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="post" action="{{ url_for('se.income_delete', rec_id=r.id) }}" class="d-inline"
@@ -89,7 +89,7 @@
   <tfoot>
     <tr class="fw-bold">
       <td colspan="5">Total</td>
-      <td class="text-end">${{ "%.2f"|format(total) }}</td>
+      <td class="text-end">{{ total|currency }}</td>
       <td></td>
     </tr>
   </tfoot>
