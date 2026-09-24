@@ -522,14 +522,16 @@ class TestSafeHarborPrecision:
         assert result["quarterly_federal_recommended"] == pytest.approx(2_800.0)
 
     def test_quarterly_ca_exact_math(self):
-        """CA quarterly payment uses FTB 30/40/0/30 weighted schedule, net of withholding.
+        """CA quarterly payment uses FTB 30/40/0/30 weighted schedule, applied to the
+        remaining balance (safe harbor − all payments YTD).
         prior_year_ca_tax=8,000; w2=200k → 90% current ≈ 9,479 > 8,000 → prior wins
         safe_harbor_ca = 8,000
-        ca_withheld=5,000 → 25% per quarter = 1,250
-        Q1 = 30% × 8,000 − 1,250 = 2,400 − 1,250 = 1,150
-        Q2 = 40% × 8,000 − 1,250 = 3,200 − 1,250 = 1,950  ← quarterly_ca_recommended
+        ca_paid_ytd = 5,000 (withheld) + 1,000 (estimated) = 6,000
+        remaining = 8,000 − 6,000 = 2,000
+        Q1 = 30% × 2,000 = 600
+        Q2 = 40% × 2,000 = 800  ← quarterly_ca_recommended
         Q3 = 0 (no CA September installment)
-        Q4 = 30% × 8,000 − 1,250 = 1,150
+        Q4 = 30% × 2,000 = 600
         """
         result = calc(
             w2_wages=200_000,
@@ -539,11 +541,11 @@ class TestSafeHarborPrecision:
             ca_estimated_paid=1_000,
         )
         assert result["safe_harbor_ca"] == pytest.approx(8_000.0)
-        assert result["ca_q1_payment"] == pytest.approx(1_150.0)
-        assert result["ca_q2_payment"] == pytest.approx(1_950.0)
+        assert result["ca_q1_payment"] == pytest.approx(600.0)
+        assert result["ca_q2_payment"] == pytest.approx(800.0)
         assert result["ca_q3_payment"] == 0.0
-        assert result["ca_q4_payment"] == pytest.approx(1_150.0)
-        assert result["quarterly_ca_recommended"] == pytest.approx(1_950.0)
+        assert result["ca_q4_payment"] == pytest.approx(600.0)
+        assert result["quarterly_ca_recommended"] == pytest.approx(800.0)
 
     def test_quarterly_zero_when_payments_exceed_safe_harbor(self):
         """If payments already satisfy safe harbor, recommended quarterly = 0."""

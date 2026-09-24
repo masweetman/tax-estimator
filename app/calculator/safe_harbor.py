@@ -24,10 +24,12 @@ def calculate_safe_harbor(inputs, federal_result, ca_result):
       - Standard (AGI <= $150k): smaller of 90% current or 100% prior CA tax.
 
     CA quarterly schedule (FTB weighted, not equal fourths):
-      Q1 Apr 15: 30% of safe harbor − 25% of annual withholding
-      Q2 Jun 15: 40% of safe harbor − 25% of annual withholding
+      Applied to the remaining balance (safe harbor − all payments YTD) so the
+      schedule always reconciles with "Safe Harbor Remaining":
+      Q1 Apr 15: 30% of remaining balance
+      Q2 Jun 15: 40% of remaining balance
       Q3 Sep 15: $0 (no CA installment due)
-      Q4 Jan 15: 30% of safe harbor − 25% of annual withholding
+      Q4 Jan 15: 30% of remaining balance
 
     Federal quarterly schedule (IRS equal fourths):
       Q1–Q4: 25% each, due Apr 15 / Jun 15 / Sep 15 / Jan 15
@@ -89,24 +91,16 @@ def calculate_safe_harbor(inputs, federal_result, ca_result):
     quarterly_federal_recommended = round(fed_remaining / 4, 2)
 
     # ------------------------------------------------------------------
-    # CA quarterly: FTB weighted 30/40/0/30 schedule, net of withholding
-    # Each installment is reduced by 25% of annual withholding (even distribution).
-    # If total CA payments already meet or exceed the safe harbor, no further
-    # payments are needed — zero out all quarterly amounts.
+    # CA quarterly: FTB weighted 30/40/0/30 schedule applied to the remaining
+    # balance (safe harbor − all payments YTD), so the schedule always sums
+    # to "Safe Harbor Remaining" regardless of how payments were made.
     # ------------------------------------------------------------------
     ca_remaining = max(0.0, safe_harbor_ca - ca_paid_ytd)
 
-    if ca_remaining == 0.0:
-        ca_q1_payment = 0.0
-        ca_q2_payment = 0.0
-        ca_q3_payment = 0.0
-        ca_q4_payment = 0.0
-    else:
-        ca_wh_per_quarter = ca_withheld * 0.25
-        ca_q1_payment = round(max(0.0, safe_harbor_ca * 0.30 - ca_wh_per_quarter), 2)
-        ca_q2_payment = round(max(0.0, safe_harbor_ca * 0.40 - ca_wh_per_quarter), 2)
-        ca_q3_payment = 0.0  # No CA installment in Q3
-        ca_q4_payment = round(max(0.0, safe_harbor_ca * 0.30 - ca_wh_per_quarter), 2)
+    ca_q1_payment = round(ca_remaining * 0.30, 2)
+    ca_q2_payment = round(ca_remaining * 0.40, 2)
+    ca_q3_payment = 0.0  # No CA installment in Q3
+    ca_q4_payment = round(ca_remaining * 0.30, 2)
 
     # backward-compat single quarterly value: use Q2 (largest installment)
     quarterly_ca_recommended = ca_q2_payment
